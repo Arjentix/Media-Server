@@ -30,6 +30,7 @@ SOFTWARE.
 #include "frame_provider.h"
 #include "frame_provider_manager.h"
 #include "port_handler/port_handler.h"
+#include "port_handler/port_handler_manager.h"
 
 namespace {
 
@@ -47,15 +48,15 @@ void SignalHandler(int) {
 FrameProviderManager BuildFrameProviderManager() {
   FrameProviderManager frame_provider_manager;
 
-  const std::string kMjpegRtspSourceIp = "192.168.0.16";
-  const int kMjpegRtspSourcePort = 5544;
-  auto mjpeg_receiver_ptr = std::make_shared<MjpegOverRtspReceiver>(
-      kMjpegRtspSourceIp, kMjpegRtspSourcePort);
-
-  auto h264_converter_ptr = std::make_shared<MjpegToH264Converter>(mjpeg_receiver_ptr);
-
-  frame_provider_manager.Register("source1", "MJPEG", mjpeg_receiver_ptr)
-                        .Register("source1", "H.264", h264_converter_ptr);
+//  const std::string kMjpegRtspSourceIp = "192.168.0.16";
+//  const int kMjpegRtspSourcePort = 5544;
+//  auto mjpeg_receiver_ptr = std::make_shared<MjpegOverRtspReceiver>(
+//      kMjpegRtspSourceIp, kMjpegRtspSourcePort);
+//
+//  auto h264_converter_ptr = std::make_shared<MjpegToH264Converter>(mjpeg_receiver_ptr);
+//
+//  frame_provider_manager.Register("source1", "MJPEG", mjpeg_receiver_ptr)
+//                        .Register("source1", "H.264", h264_converter_ptr);
   return frame_provider_manager;
 }
 
@@ -65,22 +66,22 @@ FrameProviderManager BuildFrameProviderManager() {
  * @param source_id Id of video source for GlobalFrameProvidersManager
  * @return Pointer to PortHandlerBase with HLS port handler inside
  */
-std::unique_ptr<port_handler::PortHandlerBase> BuildHlsPortHandler(
-    const FrameProviderManager &frame_provider_manager,
-    const std::string &source_id) {
-  const int kHlsPort = 2020;
-  auto hls_port_handler_ptr = std::make_unique<
-      port_handler::PortHandler<hls::Request, hls::Response>>(kHlsPort);
-
-  std::shared_ptr<FrameProvider> h264_provider_ptr =
-       frame_provider_manager.GetProvider(source_id, "H.264");
-
-  hls_port_handler_ptr->RegisterServlet(
-      "/h264",
-      hls::H264Servlet(h264_provider_ptr));
-
-  return hls_port_handler_ptr;
-}
+//std::unique_ptr<port_handler::PortHandlerBase> BuildHlsPortHandler(
+//    const FrameProviderManager &frame_provider_manager,
+//    const std::string &source_id) {
+//  const int kHlsPort = 2020;
+//  auto hls_port_handler_ptr = std::make_unique<
+//      port_handler::PortHandler<hls::Request, hls::Response>>(kHlsPort);
+//
+//  std::shared_ptr<FrameProvider> h264_provider_ptr =
+//       frame_provider_manager.GetProvider(source_id, "H.264");
+//
+//  hls_port_handler_ptr->RegisterServlet(
+//      "/h264",
+//      hls::H264Servlet(h264_provider_ptr));
+//
+//  return hls_port_handler_ptr;
+//}
 
 /**
  * @brief Create manager and register all port handlers
@@ -91,8 +92,8 @@ port_handler::PortHandlerManager BuildPortHandlerManager(
     const FrameProviderManager &frame_provider_manager) {
   port_handler::PortHandlerManager port_handler_manager;
 
-  port_handler_manager.RegisterPortHandler(
-      BuildHlsPortHandler(frame_provider_manager, "source1"));
+//  port_handler_manager.RegisterPortHandler(
+//      BuildHlsPortHandler(frame_provider_manager, "source1"));
 
   return port_handler_manager;
 }
