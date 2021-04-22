@@ -58,20 +58,7 @@ Socket(type) {
   }
 }
 
-std::optional<Socket> ServerSocket::TryAccept(int sec) const {
-  fd_set inputs;
-  timeval timeout;
-  FD_ZERO(&inputs);
-  FD_SET(descriptor_, &inputs);
-
-  timeout.tv_sec = sec;
-  timeout.tv_usec = 0;
-
-  int select_res = select(FD_SETSIZE, &inputs, nullptr, nullptr, &timeout);
-  if (select_res <= 0) {
-    return std::nullopt;
-  }
-
+Socket ServerSocket::Accept() const {
   int client_descriptor = accept(descriptor_, nullptr, nullptr);
   if (client_descriptor < 0) {
     throw AcceptError(std::string("Can't accept client: ") + strerror(errno));

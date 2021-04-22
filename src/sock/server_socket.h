@@ -46,12 +46,11 @@ class ServerSocket : public Socket {
   ServerSocket(Type type, int port_number);
 
   /**
-   * @brief Try to accept client for sec seconds
+ef Accept client
    *
-   * @param sec Number of seconds to wait client connection
-   * @return Socket associated with client, if client has connected in sec seconds
+   * @return Socket associated with client
    */
-  std::optional<Socket> TryAccept(int sec) const;
+  Socket Accept() const;
 };
 
 } // namespace sock
