@@ -27,7 +27,7 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
-#include "frame_provider_manager.h"
+#include "frame/provider_manager.h"
 #include "port_handler/port_handler.h"
 #include "port_handler/port_handler_manager.h"
 
@@ -44,8 +44,8 @@ void SignalHandler(int) {
  *
  * @return Frame provider manager with registered providers
  */
-FrameProviderManager BuildFrameProviderManager() {
-  FrameProviderManager frame_provider_manager;
+frame::ProviderManager BuildFrameProviderManager() {
+  frame::ProviderManager frame_provider_manager;
 
 //  const std::string kMjpegRtspSourceIp = "192.168.0.16";
 //  const int kMjpegRtspSourcePort = 5544;
@@ -88,7 +88,7 @@ FrameProviderManager BuildFrameProviderManager() {
  * @return PortHandlerManager with all handlers registered
  */
 port_handler::PortHandlerManager BuildPortHandlerManager(
-    const FrameProviderManager &frame_provider_manager) {
+    const frame::ProviderManager &/*frame_provider_manager*/) {
   port_handler::PortHandlerManager port_handler_manager;
 
 //  port_handler_manager.RegisterPortHandler(
@@ -103,7 +103,7 @@ int main() {
   try {
     signal(SIGINT, SignalHandler);
 
-    FrameProviderManager frame_provider_manager = BuildFrameProviderManager();
+    frame::ProviderManager frame_provider_manager = BuildFrameProviderManager();
     port_handler::PortHandlerManager port_handler_manager =
         BuildPortHandlerManager(frame_provider_manager);
 

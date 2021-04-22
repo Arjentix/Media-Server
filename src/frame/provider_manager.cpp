@@ -22,34 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#pragma once
+#include "provider_manager.h"
 
-#include <memory>
-#include <vector>
+namespace frame {
 
-#include "observer.h"
+void ProviderManager::Register(
+    const std::string &source_id,
+    const std::string &codec_id,
+    std::shared_ptr<Provider> frame_provider_ptr) {
+  sourceToProvider_.insert({source_id + codec_id, frame_provider_ptr});
+}
 
-/**
- * @brief Notifier class, that can notify observers about new data
- */
-class FrameProvider {
- public:
-  virtual ~FrameProvider() = default;
+std::shared_ptr<Provider> ProviderManager::GetProvider(
+    const std::string &source_id, const std::string &codec_id) const {
+  return sourceToProvider_.at(source_id + codec_id);
+}
 
-  /**
-   * @brief Add new observer
-   * @param observer_ptr Pointer to observer to be added
-   */
-  void AddObserver(std::shared_ptr<Observer> observer_ptr);
-
- protected:
-  /**
-   * @brief Notify all observers
-   * @param frame Data to send to observers
-   */
-  void ProvideToAll(const Bytes &frame);
-
- private:
-  //! Vector of all observers
-  std::vector<std::shared_ptr<Observer>> observers_;
-};
+} // namespace frame

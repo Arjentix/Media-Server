@@ -24,15 +24,17 @@ SOFTWARE.
 
 #pragma once
 
-#include "frame_provider.h"
+#include "provider.h"
 
 #include <memory>
 #include <unordered_map>
 
+namespace frame {
+
 /**
  * @brief Class for registering and getting frame provider
  */
-class FrameProviderManager {
+class ProviderManager {
  public:
   /**
    * @brief Register frame provider
@@ -42,7 +44,7 @@ class FrameProviderManager {
    * @param frame_provider_ptr Pointer to the frame provider to register
    */
   void Register(const std::string &source_id, const std::string &codec_id,
-                std::shared_ptr<FrameProvider> frame_provider_ptr);
+                std::shared_ptr<Provider> frame_provider_ptr);
 
   /**
    * @brief Get frame provider by given source and codes Ids
@@ -53,10 +55,12 @@ class FrameProviderManager {
    * @param codec_id Id of frames coded
    * @return frame_provider_ptr Pointer to the frame provider
    */
-  std::shared_ptr<FrameProvider> GetProvider(const std::string &source_id,
-                                             const std::string &codec_id) const;
+  std::shared_ptr<Provider> GetProvider(const std::string &source_id,
+                                        const std::string &codec_id) const;
 
  private:
-  std::unordered_map<std::string, std::shared_ptr<FrameProvider>>
+  std::unordered_map<std::string, std::shared_ptr<Provider>>
       sourceToProvider_;
 };
+
+} // namespace frame

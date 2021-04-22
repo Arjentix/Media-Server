@@ -22,16 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "frame_provider_manager.h"
+#include "provider.h"
 
-void FrameProviderManager::Register(
-    const std::string &source_id,
-    const std::string &codec_id,
-    std::shared_ptr<FrameProvider> frame_provider_ptr) {
-  sourceToProvider_.insert({source_id + codec_id, frame_provider_ptr});
+#include "observer.h"
+
+namespace frame {
+
+void Provider::AddObserver(std::shared_ptr<Observer> observer_ptr) {
+  observers_.push_back(observer_ptr);
 }
 
-std::shared_ptr<FrameProvider> FrameProviderManager::GetProvider(
-    const std::string &source_id, const std::string &codec_id) const {
-  return sourceToProvider_.at(source_id + codec_id);
+void Provider::ProvideToAll(const Bytes &frame) {
+  for (auto observer_ptr : observers_) {
+    observer_ptr->Receive(frame);
+  }
 }
+
+} // namespace frame
