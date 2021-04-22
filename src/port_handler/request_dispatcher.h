@@ -33,6 +33,7 @@ SOFTWARE.
 
 #include "servlet.h"
 
+namespace port_handler {
 /**
  * @brief RequestDispatcher allows to register handlers and then dispatch RTSP
  * request to the qualified handler returning RTSP response
@@ -94,7 +95,8 @@ class RequestDispatcher {
 
   //! Url -> Servlet inheritor
   UrlToServletMap url_to_servlet_;
-  std::unordered_set<std::string_view> acceptable_urls_; //!< All acceptable urls
+  //! All acceptable urls
+  std::unordered_set<std::string_view> acceptable_urls_;
 
   /**
    * @brief Choose proper Servlet to serve request on the given url
@@ -144,7 +146,8 @@ class RequestDispatcher {
     const std::string scheme = R"(^(\S+)://)";
     const std::string login = R"(([^:\s]+)?)";
     const std::string password = R"((\S+))";
-    const std::string login_password = R"((?:)" + login + R"((?::)" + password + R"()?@)?)";
+    const std::string
+        login_password = R"((?:)" + login + R"((?::)" + password + R"()?@)?)";
     const std::string hostname = R"(([^:/]+))";
     const std::string port = R"((?::([0-9]+))?)";
     const std::string path = R"(((?:/[^/\s]+)+))";
@@ -164,3 +167,5 @@ class RequestDispatcher {
     return path_value;
   }
 };
+
+} // namespace port_handler
