@@ -27,7 +27,6 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
-#include "frame_provider.h"
 #include "frame_provider_manager.h"
 #include "port_handler/port_handler.h"
 #include "port_handler/port_handler_manager.h"
