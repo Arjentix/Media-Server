@@ -7,6 +7,7 @@ set(BUILD_FLAGS "-Wall -Wextra -pedantic")
 
 set(SOURCES
     ${SRC_DIR}/main.cpp
+    ${SRC_DIR}/port_handler/port_handler_manager.cpp
     ${SRC_DIR}/frame_provider.cpp
     ${SRC_DIR}/frame_provider_manager.cpp
     ${SRC_DIR}/sock/exception.cpp
