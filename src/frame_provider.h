@@ -22,16 +22,34 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "notifier.h"
+#pragma once
+
+#include <memory>
+#include <vector>
 
 #include "observer.h"
 
-void Notifier::AddObserver(std::shared_ptr<Observer> observer_ptr) {
-  observers_.push_back(observer_ptr);
-}
+/**
+ * @brief Notifier class, that can notify observers about new data
+ */
+class FrameProvider {
+ public:
+  virtual ~FrameProvider() = default;
 
-void Notifier::NotifyAll(const Bytes &data) {
-  for (auto observer_ptr : observers_) {
-    observer_ptr->Receive(data);
-  }
-}
+  /**
+   * @brief Add new observer
+   * @param observer_ptr Pointer to observer to be added
+   */
+  void AddObserver(std::shared_ptr<Observer> observer_ptr);
+
+ protected:
+  /**
+   * @brief Notify all observers
+   * @param frame Data to send to observers
+   */
+  void ProvideToAll(const Bytes &frame);
+
+ private:
+  //! Vector of all observers
+  std::vector<std::shared_ptr<Observer>> observers_;
+};
