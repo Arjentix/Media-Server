@@ -31,7 +31,7 @@ SOFTWARE.
 
 namespace frame {
 /**
- * @brief Notifier class, that can notify observers about new data
+ * @brief  Provider class, that can provide new frames to observers
  */
 class Provider {
  public:

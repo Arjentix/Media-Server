@@ -26,6 +26,7 @@ SOFTWARE.
 
 #include "provider.h"
 
+#include <string>
 #include <memory>
 #include <unordered_map>
 
