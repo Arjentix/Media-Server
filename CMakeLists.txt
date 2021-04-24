@@ -14,6 +14,8 @@ set(SOURCES
     ${SRC_DIR}/sock/socket.cpp
     ${SRC_DIR}/sock/server_socket.cpp
     ${SRC_DIR}/sock/client_socket.cpp
+    ${SRC_DIR}/rtsp/request.cpp
+    ${SRC_DIR}/rtsp/response.cpp
 )
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
