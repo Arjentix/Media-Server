@@ -30,6 +30,7 @@ SOFTWARE.
 #include "frame/provider_manager.h"
 #include "port_handler/port_handler.h"
 #include "port_handler/port_handler_manager.h"
+#include "rtsp/client.h"
 
 namespace {
 
@@ -45,16 +46,20 @@ void SignalHandler(int) {
  * @return Frame provider manager with registered providers
  */
 frame::ProviderManager BuildFrameProviderManager() {
+  using namespace std::string_literals;
+
   frame::ProviderManager frame_provider_manager;
 
-//  const std::string kMjpegRtspSourceIp = "192.168.0.16";
-//  const int kMjpegRtspSourcePort = 5544;
-//  auto mjpeg_receiver_ptr = std::make_shared<MjpegOverRtspReceiver>(
-//      kMjpegRtspSourceIp, kMjpegRtspSourcePort);
+  const std::string kRtspSourceIp = "192.168.0.16";
+  const int kRtspSourcePort = 5544;
+  const std::string kRtspSourceUrl = "rtsp://"s + kRtspSourceIp + ":" +
+      std::to_string(kRtspSourcePort) + "/jpeg";
+  auto rtsp_client_ptr = std::make_shared<rtsp::Client>(
+      kRtspSourceIp, kRtspSourcePort, kRtspSourceUrl);
 //
 //  auto h264_converter_ptr = std::make_shared<MjpegToH264Converter>(mjpeg_receiver_ptr);
 //
-//  frame_provider_manager.Register("source1", "MJPEG", mjpeg_receiver_ptr)
+  frame_provider_manager.Register("source1", "MJPEG", rtsp_client_ptr);
 //                        .Register("source1", "H.264", h264_converter_ptr);
   return frame_provider_manager;
 }
