@@ -148,20 +148,6 @@ class Client : public frame::Provider {
    */
   static void VerifyAcceptableMethods(
       const std::vector<std::string> &acceptable_methods_strings);
-
-  /**
-   * @brief Log request to the cout
-   *
-   * @param request Request to log
-   */
-  static void LogRequest(const Request &request);
-
-  /**
-   * @brief Log response to the cout
-   *
-   * @param response Response to log
-   */
-  static void LogResponse(const Response &response);
 };
 
 } // namespace rtsp

@@ -74,7 +74,7 @@ session_id_(0) {
   }
   session_id_ = std::stoul(response.headers.at(kSessionHeader));
 
-  response = SendPlayRequest();
+  (void)SendPlayRequest();
 }
 
 Client::~Client() {
@@ -127,7 +127,7 @@ Response Client::SendTeardownRequest() {
 void Client::AppendVideoPathInUrl() {
   const auto &media_descriptions = session_description_.media_descriptions;
   auto video_it = std::find_if(media_descriptions.begin(), media_descriptions.end(),
-                               [] (const sdp::MediaDescription &media_description) {
+      [] (const sdp::MediaDescription &media_description) {
         return media_description.name.find("video") != std::string::npos;
       });
   if (video_it == media_descriptions.end()) {
@@ -135,15 +135,15 @@ void Client::AppendVideoPathInUrl() {
   }
 
   const auto &attributes = video_it->attributes;
-  auto attr_it = std::find_if(attributes.begin(), attributes.end(),
+  auto control_it = std::find_if(attributes.begin(), attributes.end(),
       [] (const sdp::Attribute &attr) {
         return attr.first == "control";
       });
-  if (attr_it == attributes.end()) {
+  if (control_it == attributes.end()) {
     return;
   }
 
-  url_ += "/"s + attr_it->second;
+  url_ += "/"s + control_it->second;
 }
 
 Request Client::BuildRequestSkeleton(const Method method) {
@@ -153,22 +153,22 @@ Request Client::BuildRequestSkeleton(const Method method) {
   request.method = method;
   request.url = url_;
   request.version = 1.0;
-  request.headers["Cseq"] =  std::to_string(++cseq_counter);
+  request.headers["Cseq"] = std::to_string(++cseq_counter);
   request.headers["User-Agent"] = "Arjentix Media Server";
 
   return request;
 }
 
 void Client::SendRequest(const Request &request) {
-  LogRequest(request);
+  std::cout << "\nRequest:\n" << request << std::endl;
   rtsp_socket_ << request << std::endl;
 }
 
 Response Client::ReceiveResponse() {
   Response response;
   rtsp_socket_ >> response;
+  std::cout << "\nResponse:\n" << response << std::endl;
   VerifyResponseIsOk(response);
-  LogResponse(response);
 
   return response;
 }
@@ -194,14 +194,6 @@ void Client::VerifyAcceptableMethods(
       throw std::runtime_error("Server doesn't accept required "s + method_str + " method");
     }
   }
-}
-
-void Client::LogRequest(const Request &request) {
-  std::cout << "\nRequest:\n" << request << std::endl;
-}
-
-void Client::LogResponse(const Response &response) {
-  std::cout << "\nResponse:\n" << response << std::endl;
 }
 
 } // namespace rtsp
