@@ -24,13 +24,14 @@ SOFTWARE.
 
 #pragma once
 
+#include <string>
+#include <random>
+
 #include "frame/provider.h"
 #include "sock/client_socket.h"
 #include "sock/server_socket.h"
 #include "response.h"
-
-#include <string>
-#include <random>
+#include "sdp/session_description.h"
 
 namespace rtsp {
 
@@ -57,6 +58,9 @@ class Client : public frame::Provider {
   std::string url_; //!< RTSP content url
   sock::ClientSocket rtsp_socket_; //!< Socket for RTSP TCP connection
   sock::ServerSocket rtp_socket_; //!< Socket for RTP UDP data receiving
+  //! Session description
+  sdp::SessionDescription session_description_;
+  uint32_t session_id_; //!< Session identifier
 
   /**
    * @brief Send OPTION request to the server
@@ -71,6 +75,18 @@ class Client : public frame::Provider {
    * @return Response from server
    */
   Response SendDescribeRequest();
+
+  /**
+   * @brief Send SETUP request to the server
+   *
+   * @return Response from server
+   */
+  Response SendSetupRequest();
+
+  /**
+   * @brief Append path to the video track in the url using session_description_
+   */
+  void AppendVideoPathInUrl();
 
   /**
    * @brief Build basic request skeleton. CSeq counting is done automatically

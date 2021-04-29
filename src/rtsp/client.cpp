@@ -31,12 +31,6 @@ SOFTWARE.
 #include "sdp/session_description.h"
 #include "split.h"
 
-namespace {
-
-const char kCseq[] = "Cseq";
-
-} // namespace
-
 namespace rtsp {
 
 using namespace std::string_literals;
@@ -47,8 +41,9 @@ random_engine_(rd_()),
 distribution_(1024, 10000),
 url_(std::move(url)),
 rtsp_socket_(sock::Type::kTcp),
-rtp_socket_(sock::Type::kUdp, distribution_(random_engine_))
-{
+rtp_socket_(sock::Type::kUdp, distribution_(random_engine_)),
+session_description_(),
+session_id_(0) {
   if (!rtsp_socket_.Connect(server_ip, port)) {
     throw std::runtime_error("Can't connect to the RTSP server "s +
                              server_ip + ':' + std::to_string(port));
@@ -62,7 +57,22 @@ rtp_socket_(sock::Type::kUdp, distribution_(random_engine_))
   VerifyAcceptableMethods(Split(response.headers.at(kPublicHeader), ", "));
 
   response = SendDescribeRequest();
-  sdp::SessionDescription session_description = sdp::ParseSessionDescription(response.body);
+  session_description_ = sdp::ParseSessionDescription(response.body);
+  AppendVideoPathInUrl();
+
+  response = SendSetupRequest();
+  const char kTransportHeader[] = "Transport";
+  if (!response.headers.count(kTransportHeader) ||
+      response.headers.at(kTransportHeader).find("RTP/AVP") == std::string::npos) {
+    throw std::runtime_error("Server doesn't allow RTP/AVP translation");
+  }
+
+  const char kSessionHeader[] = "Session";
+  if (!response.headers.count(kSessionHeader)) {
+    throw std::runtime_error(
+        "Server's response on SETUP request doesn't have Session header");
+  }
+  session_id_ = std::stoul(response.headers.at(kSessionHeader));
 }
 
 Response Client::SendOptionsRequest() {
@@ -80,6 +90,31 @@ Response Client::SendDescribeRequest() {
   return ReceiveResponse();
 }
 
+Response Client::SendSetupRequest() {
+  Request request = BuildRequestSkeleton(Method::kSetup);
+  const int port_number = rtp_socket_.GetPortNumber();
+  request.headers.insert(
+      {"Transport", "RTP/AVP;unicast;client_port="s +
+                    std::to_string(port_number) + "-"s +
+                    std::to_string(port_number + 1)});
+  SendRequest(request);
+
+  return ReceiveResponse();
+}
+
+void Client::AppendVideoPathInUrl() {
+  for (const auto &media_description : session_description_.media_descriptions) {
+    if (media_description.name.find("video") != std::string::npos) {
+      for (const auto &attribute : media_description.attributes) {
+        if (attribute.first == "control") {
+          url_ += "/"s + attribute.second;
+          break;
+        }
+      }
+    }
+  }
+}
+
 Request Client::BuildRequestSkeleton(const Method method) {
   static uint32_t cseq_counter = 0;
 
@@ -87,7 +122,7 @@ Request Client::BuildRequestSkeleton(const Method method) {
   request.method = method;
   request.url = url_;
   request.version = 1.0;
-  request.headers.insert({kCseq, std::to_string(++cseq_counter)});
+  request.headers.insert({"Cseq", std::to_string(++cseq_counter)});
   request.headers.insert({"User-Agent", "Arjentix Media Server"});
 
   return request;
