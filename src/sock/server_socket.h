@@ -46,11 +46,21 @@ class ServerSocket : public Socket {
   ServerSocket(Type type, int port_number);
 
   /**
-ef Accept client
+   * @brief Get port number
+   *
+   * @return port number
+   */
+  int GetPortNumber() const;
+
+  /**
+   * @brief Accept client
    *
    * @return Socket associated with client
    */
   Socket Accept() const;
+
+ private:
+  int port_number_; //!< Port number
 };
 
 } // namespace sock

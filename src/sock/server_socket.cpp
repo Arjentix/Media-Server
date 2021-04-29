@@ -36,7 +36,8 @@ SOFTWARE.
 namespace sock {
 
 ServerSocket::ServerSocket(Type type, int port_number) :
-Socket(type) {
+Socket(type),
+port_number_(port_number) {
   if (fcntl(descriptor_, F_SETFL, fcntl(descriptor_, F_GETFL, 0) | O_NONBLOCK) < 0) {
     throw ServerSocketException("Can't set non blocking option for socket");
   }
@@ -44,7 +45,7 @@ Socket(type) {
   sockaddr_in server_addr;
   server_addr.sin_family = AF_INET;
   server_addr.sin_addr.s_addr = htons(INADDR_ANY);
-  server_addr.sin_port = htons(port_number);
+  server_addr.sin_port = htons(port_number_);
 
   int opt = 1;
   setsockopt(descriptor_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -56,6 +57,10 @@ Socket(type) {
   if ((type == Type::kTcp) && listen(descriptor_, 1) < 0) {
     throw ListenError(std::string("Listen: ") + strerror(errno));
   }
+}
+
+int ServerSocket::GetPortNumber() const {
+  return port_number_;
 }
 
 Socket ServerSocket::Accept() const {
