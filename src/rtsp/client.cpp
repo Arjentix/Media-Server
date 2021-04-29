@@ -77,6 +77,10 @@ session_id_(0) {
   response = SendPlayRequest();
 }
 
+Client::~Client() {
+  (void)SendTeardownRequest();
+}
+
 Response Client::SendOptionsRequest() {
   Request request = BuildRequestSkeleton(Method::kOptions);
   SendRequest(request);
@@ -106,6 +110,14 @@ Response Client::SendSetupRequest() {
 Response Client::SendPlayRequest() {
   Request request = BuildRequestSkeleton(Method::kPlay);
   request.headers["Range"] = "npt=0.000-";
+  request.headers["Session"] = std::to_string(session_id_);
+  SendRequest(request);
+
+  return ReceiveResponse();
+}
+
+Response Client::SendTeardownRequest() {
+  Request request = BuildRequestSkeleton(Method::kTeardown);
   request.headers["Session"] = std::to_string(session_id_);
   SendRequest(request);
 

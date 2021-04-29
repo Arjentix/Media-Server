@@ -49,6 +49,11 @@ class Client : public frame::Provider {
    */
   Client(const std::string &server_ip, int port, std::string url);
 
+  /**
+   * @brief Sends TEARDOWN request
+   */
+  ~Client();
+
  private:
   std::random_device rd_; //!< Device for random rtp port generating
   //! Engine for random rtp port generating
@@ -89,6 +94,13 @@ class Client : public frame::Provider {
    * @return Response from server
    */
   Response SendPlayRequest();
+
+  /**
+   * @brief Send TEARDOWN request to the server
+   *
+   * @return Response from server
+   */
+  Response SendTeardownRequest();
 
   /**
    * @brief Append path to the video track in the url using session_description_
