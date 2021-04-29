@@ -73,6 +73,8 @@ session_id_(0) {
         "Server's response on SETUP request doesn't have Session header");
   }
   session_id_ = std::stoul(response.headers.at(kSessionHeader));
+
+  response = SendPlayRequest();
 }
 
 Response Client::SendOptionsRequest() {
@@ -84,7 +86,7 @@ Response Client::SendOptionsRequest() {
 
 Response Client::SendDescribeRequest() {
   Request request = BuildRequestSkeleton(Method::kDescribe);
-  request.headers.insert({"Accept", "application/sdp"});
+  request.headers["Accept"] = "application/sdp";
   SendRequest(request);
 
   return ReceiveResponse();
@@ -93,26 +95,43 @@ Response Client::SendDescribeRequest() {
 Response Client::SendSetupRequest() {
   Request request = BuildRequestSkeleton(Method::kSetup);
   const int port_number = rtp_socket_.GetPortNumber();
-  request.headers.insert(
-      {"Transport", "RTP/AVP;unicast;client_port="s +
-                    std::to_string(port_number) + "-"s +
-                    std::to_string(port_number + 1)});
+  request.headers["Transport"] =
+      "RTP/AVP;unicast;client_port="s + std::to_string(port_number) + "-"s +
+      std::to_string(port_number + 1);
+  SendRequest(request);
+
+  return ReceiveResponse();
+}
+
+Response Client::SendPlayRequest() {
+  Request request = BuildRequestSkeleton(Method::kPlay);
+  request.headers["Range"] = "npt=0.000-";
+  request.headers["Session"] = std::to_string(session_id_);
   SendRequest(request);
 
   return ReceiveResponse();
 }
 
 void Client::AppendVideoPathInUrl() {
-  for (const auto &media_description : session_description_.media_descriptions) {
-    if (media_description.name.find("video") != std::string::npos) {
-      for (const auto &attribute : media_description.attributes) {
-        if (attribute.first == "control") {
-          url_ += "/"s + attribute.second;
-          break;
-        }
-      }
-    }
+  const auto &media_descriptions = session_description_.media_descriptions;
+  auto video_it = std::find_if(media_descriptions.begin(), media_descriptions.end(),
+                               [] (const sdp::MediaDescription &media_description) {
+        return media_description.name.find("video") != std::string::npos;
+      });
+  if (video_it == media_descriptions.end()) {
+    return;
   }
+
+  const auto &attributes = video_it->attributes;
+  auto attr_it = std::find_if(attributes.begin(), attributes.end(),
+      [] (const sdp::Attribute &attr) {
+        return attr.first == "control";
+      });
+  if (attr_it == attributes.end()) {
+    return;
+  }
+
+  url_ += "/"s + attr_it->second;
 }
 
 Request Client::BuildRequestSkeleton(const Method method) {
@@ -122,8 +141,8 @@ Request Client::BuildRequestSkeleton(const Method method) {
   request.method = method;
   request.url = url_;
   request.version = 1.0;
-  request.headers.insert({"Cseq", std::to_string(++cseq_counter)});
-  request.headers.insert({"User-Agent", "Arjentix Media Server"});
+  request.headers["Cseq"] =  std::to_string(++cseq_counter);
+  request.headers["User-Agent"] = "Arjentix Media Server";
 
   return request;
 }

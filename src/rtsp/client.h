@@ -84,6 +84,13 @@ class Client : public frame::Provider {
   Response SendSetupRequest();
 
   /**
+   * @brief Send PLAY request to the server
+   *
+   * @return Response from server
+   */
+  Response SendPlayRequest();
+
+  /**
    * @brief Append path to the video track in the url using session_description_
    */
   void AppendVideoPathInUrl();
