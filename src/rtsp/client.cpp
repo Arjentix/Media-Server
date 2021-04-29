@@ -24,41 +24,16 @@ SOFTWARE.
 
 #include "client.h"
 
-#include <sstream>
 #include <algorithm>
 #include <iostream>
 
 #include "request.h"
+#include "sdp/session_description.h"
+#include "split.h"
 
 namespace {
 
 const char kCseq[] = "Cseq";
-
-/**
- * @brief Split string by delimiter
- *
- * @param str String to split
- * @param delim Delimiter string
- * @return Vector of substrings split by delimiter
- */
-std::vector<std::string> Split(const std::string &str, const std::string &delim = " ") {
-  std::vector<std::string> result;
-  size_t pos = str.find(delim);
-  size_t initial_pos = 0;
-
-  while (pos != std::string::npos) {
-    result.push_back(str.substr(initial_pos, pos - initial_pos));
-    initial_pos = pos + delim.length();
-
-    pos = str.find(delim, initial_pos);
-  }
-
-  result.push_back(
-      str.substr(initial_pos,
-                 std::min(pos, str.size()) - initial_pos + delim.length()));
-
-  return result;
-}
 
 } // namespace
 
@@ -87,6 +62,7 @@ rtp_socket_(sock::Type::kUdp, distribution_(random_engine_))
   VerifyAcceptableMethods(Split(response.headers.at(kPublicHeader), ", "));
 
   response = SendDescribeRequest();
+  sdp::SessionDescription session_description = sdp::ParseSessionDescription(response.body);
 }
 
 Response Client::SendOptionsRequest() {
@@ -133,7 +109,7 @@ Response Client::ReceiveResponse() {
 
 void Client::VerifyResponseIsOk(const Response &response) {
   if (response.code != 200) {
-    throw std::runtime_error("Response has error code " +
+    throw std::runtime_error("Response has error code "s +
         std::to_string(response.code) + ": " + response.description);
   }
 }

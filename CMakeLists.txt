@@ -18,6 +18,7 @@ set(SOURCES
     ${SRC_DIR}/rtsp/client.cpp
     ${SRC_DIR}/rtsp/request.cpp
     ${SRC_DIR}/rtsp/response.cpp
+    ${SRC_DIR}/sdp/session_description.cpp
 )
 
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
