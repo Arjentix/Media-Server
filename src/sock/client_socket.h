@@ -38,7 +38,7 @@ class ClientSocket : public Socket {
    *
    * @param type Type of the ClientSocket
    */
-  ClientSocket(Type type);
+  explicit ClientSocket(Type type);
 
   /**
    * @brief Connect to the server socket

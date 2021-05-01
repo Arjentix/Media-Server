@@ -66,9 +66,17 @@ class Socket {
 
   /**
    * @brief Get socket descriptor
+   *
    * @return descriptor
    */
   int GetDescriptor() const;
+
+  /**
+   * @brief Get socket type
+   *
+   * @return type
+   */
+  Type GetType() const;
 
   /**
    * @brief Get ip address of the peer
@@ -112,6 +120,7 @@ class Socket {
 
   friend Socket &operator<<(Socket &socket, std::ostream &(*f)(std::ostream &));
 
+  Type type_; //!< Socket type
   bool is_moved_; //!< True, if Socket was moved
   std::ostringstream ss_buffer_; //!< Buffer for operator<<
 };

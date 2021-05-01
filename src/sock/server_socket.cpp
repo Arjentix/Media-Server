@@ -38,8 +38,11 @@ namespace sock {
 ServerSocket::ServerSocket(Type type, int port_number) :
 Socket(type),
 port_number_(port_number) {
-  if (fcntl(descriptor_, F_SETFL, fcntl(descriptor_, F_GETFL, 0) | O_NONBLOCK) < 0) {
-    throw ServerSocketException("Can't set non blocking option for socket");
+  if (GetType() == Type::kTcp) {
+    if (fcntl(descriptor_, F_SETFL, fcntl(descriptor_, F_GETFL, 0) | O_NONBLOCK)
+        < 0) {
+      throw ServerSocketException("Can't set non blocking option for socket");
+    }
   }
 
   sockaddr_in server_addr;
@@ -54,7 +57,7 @@ port_number_(port_number) {
     throw BindError(std::string("Can't bind socket: ") + strerror(errno));
   }
 
-  if ((type == Type::kTcp) && listen(descriptor_, 1) < 0) {
+  if ((GetType() == Type::kTcp) && listen(descriptor_, 1) < 0) {
     throw ListenError(std::string("Listen: ") + strerror(errno));
   }
 }

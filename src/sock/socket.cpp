@@ -38,6 +38,7 @@ namespace sock {
 
 Socket::Socket(Type type):
 descriptor_(0),
+type_(type),
 is_moved_(false) {
   int real_type = 0;
   switch (type) {
@@ -60,10 +61,15 @@ is_moved_(false) {
 Socket::Socket(int descriptor) :
 descriptor_(descriptor),
 is_moved_(false) {
+  int type;
+  socklen_t length = sizeof(type);
+  getsockopt(descriptor_, SOL_SOCKET, SO_TYPE, &type, &length);
+  type_ = (type == SOCK_STREAM ? Type::kTcp : Type::kUdp);
 }
 
 Socket::Socket(Socket &&other) :
 descriptor_(other.descriptor_),
+type_(other.type_),
 is_moved_(false) {
   other.is_moved_ = true;
 }
@@ -76,6 +82,10 @@ Socket::~Socket() {
 
 int Socket::GetDescriptor() const {
   return descriptor_;
+}
+
+Type Socket::GetType() const {
+  return type_;
 }
 
 std::string Socket::GetPeerName() const {
@@ -92,17 +102,23 @@ std::string Socket::GetPeerName() const {
 
 std::string Socket::Read(int n) {
   auto buf_ptr = std::make_unique<char[]>(n);
-  int res = recv(descriptor_, buf_ptr.get(), n, 0);
+  sockaddr_in their_addr;
+  socklen_t addr_len = sizeof(their_addr);
+  const int flags = (type_ == Type::kTcp ? 0 : MSG_WAITALL);
 
+  int res = recvfrom(descriptor_, buf_ptr.get(), n, flags,
+                     reinterpret_cast<sockaddr *>(&their_addr), &addr_len);
   if (res < 0) {
     throw ReadError(strerror(errno));
   }
-  if (res == 0 && n != 0) {
+
+  if (type_ == Type::kTcp && res == 0 && n != 0) {
     throw ReadError("Socket is closed");
   }
 
-  return buf_ptr.get();
+  return {buf_ptr.get(), buf_ptr.get() + res};
 }
+
 
 void Socket::Send(std::string_view str) {
   if (send(descriptor_, str.data(), str.length(), 0) < 0) {
@@ -111,15 +127,15 @@ void Socket::Send(std::string_view str) {
 }
 
 void Socket::SendTo(const Bytes &bytes, const std::string &ip, int port) {
-  sockaddr_in server_addr;
-  server_addr.sin_family = AF_INET;
-  server_addr.sin_port = htons(port);
-  if (inet_pton(AF_INET, ip.c_str(), &server_addr.sin_addr) != 1) {
+  sockaddr_in their_addr;
+  their_addr.sin_family = AF_INET;
+  their_addr.sin_port = htons(port);
+  if (inet_pton(AF_INET, ip.c_str(), &their_addr.sin_addr) != 1) {
     throw std::invalid_argument("Invalid ip address");
   }
 
   int res = sendto(descriptor_, bytes.data(), bytes.size(), MSG_CONFIRM,
-      reinterpret_cast<sockaddr *>(&server_addr), sizeof(server_addr));
+                   reinterpret_cast<sockaddr *>(&their_addr), sizeof(their_addr));
   if (res < 0) {
     throw SendError(strerror(errno));
   }
@@ -127,6 +143,7 @@ void Socket::SendTo(const Bytes &bytes, const std::string &ip, int port) {
 
 Socket &Socket::operator=(Socket &&other) {
   descriptor_ = other.descriptor_;
+  type_ = other.type_;
   other.is_moved_ = true;
 
   return *this;
