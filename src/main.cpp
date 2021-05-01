@@ -50,7 +50,7 @@ frame::ProviderManager BuildFrameProviderManager() {
 
   frame::ProviderManager frame_provider_manager;
 
-  const std::string kRtspSourceIp = "192.168.0.16";
+  const std::string kRtspSourceIp = "192.168.1.16";
   const int kRtspSourcePort = 5544;
   const std::string kRtspSourceUrl = "rtsp://"s + kRtspSourceIp + ":" +
       std::to_string(kRtspSourcePort) + "/jpeg";
