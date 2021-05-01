@@ -26,6 +26,8 @@ SOFTWARE.
 
 #include <string>
 #include <random>
+#include <thread>
+#include <mutex>
 
 #include "frame/provider.h"
 #include "sock/client_socket.h"
@@ -55,17 +57,21 @@ class Client : public frame::Provider {
   ~Client();
 
  private:
-  std::random_device rd_; //!< Device for random rtp port generating
-  //! Engine for random rtp port generating
-  std::default_random_engine random_engine_;
-  //! Distribution for random rtp port generating
-  std::uniform_int_distribution<int> distribution_;
+//  std::random_device rd_; //!< Device for random rtp port generating
+//  //! Engine for random rtp port generating
+//  std::default_random_engine random_engine_;
+//  //! Distribution for random rtp port generating
+//  std::uniform_int_distribution<int> distribution_;
   std::string url_; //!< RTSP content url
   sock::ClientSocket rtsp_socket_; //!< Socket for RTSP TCP connection
   sock::ServerSocket rtp_socket_; //!< Socket for RTP UDP data receiving
   //! Session description
   sdp::SessionDescription session_description_;
   uint32_t session_id_; //!< Session identifier
+  //! Worker that receives data on rtp_socket_ and provide it to all observers
+  std::thread rtp_data_receiving_worker_;
+  bool worker_stop_; //!< True, if rtp_data_receiving_worker_ should stop
+  std::mutex worker_mutex_; //!< Mutex for rtp_data_receiving_worker_
 
   /**
    * @brief Send OPTION request to the server
@@ -128,6 +134,11 @@ class Client : public frame::Provider {
    * @return Received response
    */
   Response ReceiveResponse();
+
+  /**
+   * @brief Receive data on rtp_socket_, pack it to jpeg and provide to all observers
+   */
+  void RtpDataReceiving();
 
   /**
    * @brief Check if response has 200 status code

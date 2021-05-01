@@ -30,20 +30,26 @@ SOFTWARE.
 #include "request.h"
 #include "sdp/session_description.h"
 #include "split.h"
+#include "rtp/packet.h"
+#include "rtp/mjpeg/packet.h"
 
 namespace rtsp {
 
 using namespace std::string_literals;
 
 Client::Client(const std::string &server_ip, const int port, std::string url):
-rd_(),
-random_engine_(rd_()),
-distribution_(1024, 10000),
+//rd_(),
+//random_engine_(rd_()),
+//distribution_(1024, 10000),
 url_(std::move(url)),
 rtsp_socket_(sock::Type::kTcp),
-rtp_socket_(sock::Type::kUdp, distribution_(random_engine_)),
+//rtp_socket_(sock::Type::kUdp, distribution_(random_engine_)),
+rtp_socket_(sock::Type::kUdp, 4577),
 session_description_(),
-session_id_(0) {
+session_id_(0),
+rtp_data_receiving_worker_(),
+worker_stop_(false),
+worker_mutex_() {
   if (!rtsp_socket_.Connect(server_ip, port)) {
     throw std::runtime_error("Can't connect to the RTSP server "s +
                              server_ip + ':' + std::to_string(port));
@@ -75,10 +81,17 @@ session_id_(0) {
   session_id_ = std::stoul(response.headers.at(kSessionHeader));
 
   (void)SendPlayRequest();
+  rtp_data_receiving_worker_ = std::thread(&Client::RtpDataReceiving, this);
 }
 
 Client::~Client() {
   (void)SendTeardownRequest();
+
+  {
+    std::lock_guard lock(worker_mutex_);
+    worker_stop_ = true;
+  }
+  rtp_data_receiving_worker_.join();
 }
 
 Response Client::SendOptionsRequest() {
@@ -171,6 +184,30 @@ Response Client::ReceiveResponse() {
   VerifyResponseIsOk(response);
 
   return response;
+}
+
+void Client::RtpDataReceiving() {
+  std::vector<rtp::mjpeg::Packet> mjpeg_packets;
+
+  for (;;) {
+    {
+      std::lock_guard lock(worker_mutex_);
+      if (worker_stop_) {
+        return;
+      }
+    }
+
+    rtp::Packet rtp_packet;
+    rtp_socket_ >> rtp_packet;
+    rtp::mjpeg::Packet mjpeg_packet;
+    mjpeg_packet.Deserialize(rtp_packet.payload);
+    mjpeg_packets.push_back(std::move(mjpeg_packet));
+    if (rtp_packet.header.marker == 1U) {
+//      Bytes frame = rtp::mjpeg::PackToJpeg(mjpeg_packets);
+//      ProvideToAll(frame);
+      mjpeg_packets.clear();
+    }
+  }
 }
 
 void Client::VerifyResponseIsOk(const Response &response) {

@@ -24,10 +24,16 @@ set(SOURCES
     ${SRC_DIR}/rtp/mjpeg/packet.cpp
 )
 
+find_package(Threads REQUIRED)
+
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCES})
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
     ${SRC_DIR}
+)
+
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE
+    Threads::Threads
 )
 
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
