@@ -24,16 +24,34 @@ SOFTWARE.
 
 #include "packet.h"
 
-#include <algorithm>
-
-namespace {
-
-} // namespace
-
 namespace rtp::mjpeg {
 
 void Packet::Deserialize(const Bytes &bytes) {
+  ValidateBytesSize(bytes, 8);
 
+  header.type_specific = bytes[0];
+  header.fragment_offset = Deserialize24({bytes.begin() + 1, bytes.begin() + 4});
+  header.type = bytes[4];
+  header.quality = bytes[5];
+  header.width = bytes[6];
+  header.height = bytes[7];
+  auto payload_begin_it = bytes.begin() + 8;
+  if (header.type >= 64 && header.type < 128) {
+    payload_begin_it += 4;
+    header.restart_marker_header = Deserialize32({bytes.begin() + 8, payload_begin_it});
+  }
+  if (header.quality >= 128) {
+    auto it = payload_begin_it;
+    header.quantization_table_header.mbz = *(it++);
+    header.quantization_table_header.precision = *(it++);
+    header.quantization_table_header.length = *(it++);
+    header.quantization_table_header.data.insert(
+        header.quantization_table_header.data.end(),
+        it,
+        it + header.quantization_table_header.length);
+    payload_begin_it += 3 + header.quantization_table_header.length;
+  }
+  payload.insert(payload.end(), payload_begin_it, bytes.end());
 }
 
 } // namespace rtp::mjpeg
