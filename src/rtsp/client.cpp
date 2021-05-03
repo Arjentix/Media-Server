@@ -38,12 +38,8 @@ namespace rtsp {
 using namespace std::string_literals;
 
 Client::Client(const std::string &server_ip, const int port, std::string url):
-//rd_(),
-//random_engine_(rd_()),
-//distribution_(1024, 10000),
 url_(std::move(url)),
 rtsp_socket_(sock::Type::kTcp),
-//rtp_socket_(sock::Type::kUdp, distribution_(random_engine_)),
 rtp_socket_(sock::Type::kUdp, 4577),
 session_description_(),
 session_id_(0),

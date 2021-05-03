@@ -57,11 +57,6 @@ class Client : public frame::Provider {
   ~Client();
 
  private:
-//  std::random_device rd_; //!< Device for random rtp port generating
-//  //! Engine for random rtp port generating
-//  std::default_random_engine random_engine_;
-//  //! Distribution for random rtp port generating
-//  std::uniform_int_distribution<int> distribution_;
   std::string url_; //!< RTSP content url
   sock::ClientSocket rtsp_socket_; //!< Socket for RTSP TCP connection
   sock::ServerSocket rtp_socket_; //!< Socket for RTP UDP data receiving
