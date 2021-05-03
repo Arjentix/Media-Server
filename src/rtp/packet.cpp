@@ -67,8 +67,7 @@ void Packet::Deserialize(const Bytes &bytes) {
 sock::Socket &operator>>(sock::Socket &socket, Packet &packet) {
   std::string packet_str = socket.Read(1024);
   Bytes bytes(packet_str.size());
-//  std::move(packet_str.begin(), packet_str.end(), bytes.begin());
-  for (int i = 0; i < packet_str.size(); ++i) {
+  for (std::size_t i = 0; i < packet_str.size(); ++i) {
     bytes[i] = std::move(packet_str[i]);
   }
 
