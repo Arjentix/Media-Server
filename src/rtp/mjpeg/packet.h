@@ -64,4 +64,12 @@ struct Packet : public Deserializable {
   void Deserialize(const Bytes &bytes) override;
 };
 
+/**
+ * @brief Unpack JPEG image from MJPEG packets
+ *
+ * @param packets MJPEG packets with full image
+ * @return Bytes representing JPEG image
+ */
+Bytes UnpackJpeg(const std::vector<Packet> &packets);
+
 } // namespace rtp::mjpeg
