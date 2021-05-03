@@ -35,10 +35,20 @@ class Deserializable {
 };
 
 /**
+ * @brief Check if bytes contains at least expected_size bytes
+ * @throw std::invalid_argument, if bytes.size() < expected_size
+ *
+ * @param bytes Collection of bytes
+ * @param expected_size Expected size of bytes collection
+ */
+void ValidateBytesSize(const Bytes &bytes, std::size_t expected_size);
+
+/**
  * @brief Deserialize integer from bytes
  *
  * @param bytes Bytes to deserialize integers from
  * @return Deserialized integer
  */
 uint16_t Deserialize16(const Bytes &bytes);
+uint32_t Deserialize24(const Bytes &bytes);
 uint32_t Deserialize32(const Bytes &bytes);

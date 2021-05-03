@@ -27,29 +27,25 @@ SOFTWARE.
 #include <string>
 #include <stdexcept>
 
-namespace {
-
-/**
- * @brief Check if bytes contains at least expected_size bytes
- * @throw std::invalid_argument, if bytes.size() < expected_size
- *
- * @param bytes Collection of bytes
- * @param expected_size Expected size of bytes collection
- */
-void ValidateBytesSize(const Bytes &bytes, std::size_t expected_size) {
+void ValidateBytesSize(const Bytes &bytes, const std::size_t expected_size) {
   using namespace std::string_literals;
 
   if (bytes.size() < expected_size) {
-    throw std::invalid_argument("Expected at least "s + std::to_string(2) + " bytes");
+    throw std::invalid_argument("Expected at least "s +
+                                std::to_string(expected_size) + " bytes");
   }
 }
-
-} // namespace
 
 uint16_t Deserialize16(const Bytes &bytes) {
   ValidateBytesSize(bytes, 2);
 
   return ((uint16_t(bytes[0]) << 8) | uint16_t(bytes[1]));
+}
+
+uint32_t Deserialize24(const Bytes &bytes) {
+  ValidateBytesSize(bytes, 3);
+
+  return ((uint32_t(bytes[0]) << 16) | (uint32_t(bytes[1] << 8)) | uint32_t(bytes[2]));
 }
 
 uint32_t Deserialize32(const Bytes &bytes) {

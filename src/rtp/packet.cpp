@@ -24,11 +24,11 @@ SOFTWARE.
 
 #include "packet.h"
 
-#include <algorithm>
-
 namespace rtp {
 
 void Packet::Deserialize(const Bytes &bytes) {
+  ValidateBytesSize(bytes, 12);
+
   header.version = (bytes[0] & 0xC0) >> 6;
   header.padding = (bytes[0] & 0x20) >> 5;
   header.extension = (bytes[0] & 0x10) >> 4;
@@ -40,15 +40,14 @@ void Packet::Deserialize(const Bytes &bytes) {
   header.synchronization_source = Deserialize32({bytes.begin() + 8,
                                                  bytes.begin() + 12});
   const auto contributing_sources_begin_it = bytes.begin() + 12;
-  uint32_t i = 0;
-  for (;
+  for (uint32_t i = 0;
       (i < header.csrc_count) && (i < Header::kContributingSourcesMaxCount);
       ++i) {
     const auto current_begin = contributing_sources_begin_it + 4 * i;
     header.contributing_sources[i] = Deserialize32({current_begin,
                                                     current_begin + 4});
   }
-  auto payload_begin_it = contributing_sources_begin_it + 4 * i + 4;
+  auto payload_begin_it = contributing_sources_begin_it + 4 * header.csrc_count;
   if (header.extension == 1) {
     const auto extension_header_begin_it = payload_begin_it;
     header.extension_header.id = Deserialize16({extension_header_begin_it,
@@ -57,11 +56,12 @@ void Packet::Deserialize(const Bytes &bytes) {
         {extension_header_begin_it + 2, extension_header_begin_it + 4});
     const auto extension_content_begin_it = extension_header_begin_it + 4;
     payload_begin_it = extension_content_begin_it + header.extension_header.length;
-    std::copy(extension_content_begin_it,
-              payload_begin_it,
-              std::back_inserter(header.extension_header.content));
+    header.extension_header.content.insert(
+        header.extension_header.content.end(),
+        extension_content_begin_it,
+        payload_begin_it);
   }
-  std::copy(payload_begin_it, bytes.end(), std::back_inserter(payload));
+  payload.insert(payload.end(), payload_begin_it, bytes.end());
 }
 
 sock::Socket &operator>>(sock::Socket &socket, Packet &packet) {
