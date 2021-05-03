@@ -1,0 +1,9 @@
+version: '3'
+services:
+  media-server:
+      build:
+        context: .
+        dockerfile: ./dev.Dockerfile
+      ports:
+        - "2222:22"
+        - "4577:4577/udp"

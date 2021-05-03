@@ -17,6 +17,7 @@ RUN DEBIAN_FRONTEND="noninteractive" apt-get update && apt-get -y install tzdata
 
 RUN apt-get update \
   && apt-get install -y ssh \
+      sudo \
       build-essential \
       gcc \
       g++ \
@@ -37,8 +38,11 @@ RUN ( \
   && mkdir /run/sshd
 
 RUN useradd -m user \
-  && yes password | passwd user
+  && yes password | passwd user \
+  && adduser user sudo
 
 RUN usermod -s /bin/bash user
+
+EXPOSE 4577/udp
 
 CMD ["/usr/sbin/sshd", "-D", "-e", "-f", "/etc/ssh/sshd_config_test_clion"]
