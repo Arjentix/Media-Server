@@ -43,9 +43,11 @@ class ProviderManager {
    * @param source_id Id of video source
    * @param codec_id Id of frames coded
    * @param frame_provider_ptr Pointer to the frame provider to register
+   * @return Reference to *this to allow chaining
    */
-  void Register(const std::string &source_id, const std::string &codec_id,
-                std::shared_ptr<Provider> frame_provider_ptr);
+  ProviderManager &Register(const std::string &source_id,
+                            const std::string &codec_id,
+                            std::shared_ptr<Provider> frame_provider_ptr);
 
   /**
    * @brief Get frame provider by given source and codes Ids

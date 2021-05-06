@@ -26,11 +26,12 @@ SOFTWARE.
 
 namespace frame {
 
-void ProviderManager::Register(
+ProviderManager &ProviderManager::Register(
     const std::string &source_id,
     const std::string &codec_id,
     std::shared_ptr<Provider> frame_provider_ptr) {
   sourceToProvider_.insert({source_id + codec_id, frame_provider_ptr});
+  return *this;
 }
 
 std::shared_ptr<Provider> ProviderManager::GetProvider(
