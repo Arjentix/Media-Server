@@ -26,9 +26,13 @@ SOFTWARE.
 
 #include "byte.h"
 
+namespace frame {
+
 class Observer {
  public:
   virtual ~Observer() = default;
 
   virtual void Receive(const Bytes &data) = 0;
 };
+
+} // namespace frame
