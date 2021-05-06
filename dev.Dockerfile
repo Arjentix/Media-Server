@@ -27,6 +27,10 @@ RUN apt-get update \
       rsync \
       tar \
       python \
+      libavcodec-dev \
+      libavformat-dev \
+      libswscale-dev \
+      libavutil-dev \
   && apt-get clean
 
 RUN ( \
