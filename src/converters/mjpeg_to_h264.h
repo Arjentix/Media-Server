@@ -32,6 +32,8 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
+#include <fstream>
+
 namespace converters {
 
 /**
@@ -39,10 +41,12 @@ namespace converters {
  */
  class MjpegToH264 : public frame::Observer, public frame::Provider {
   public:
-   /**
-    * @param provider Provider of MJPEG-encoded frames
-    */
-    MjpegToH264();
+    /**
+     * @param width Image width
+     * @param height Image height
+     * @param fps Video fps
+     */
+    MjpegToH264(int width, int height, int fps);
 
    ~MjpegToH264() noexcept override;
 
@@ -52,6 +56,9 @@ namespace converters {
     void Receive(const Bytes &data) override;
 
   private:
+   const int width_;
+   const int height_;
+   const int fps_;
    AVCodecContext *dec_context_ptr_;
    AVCodecContext *enc_context_ptr_;
    AVFrame *src_frame_ptr_;
@@ -61,6 +68,9 @@ namespace converters {
    SwsContext *sws_context_ptr_;
    uint64_t frame_counter_;
 
+   /**
+    * @brief Encode raw frame in src_frame_ with H.264 codec and put it to dst_packet_
+    */
    void EncodeToH264();
 };
 
