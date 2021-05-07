@@ -56,12 +56,36 @@ class Client : public frame::Provider {
    */
   ~Client();
 
+  /**
+   * @brief Get image width
+   *
+   * @return Width
+   */
+  int GetWidth() const;
+
+  /**
+   * @brief Get image height
+   *
+   * @return Height
+   */
+  int GetHeight() const;
+
+  /**
+   * @brief Get video fps
+   *
+   * @return Fps
+   */
+  int GetFps() const;
+
  private:
   std::string url_; //!< RTSP content url
   sock::ClientSocket rtsp_socket_; //!< Socket for RTSP TCP connection
   sock::ServerSocket rtp_socket_; //!< Socket for RTP UDP data receiving
   //! Session description
   sdp::SessionDescription session_description_;
+  int width_; //!< Image width
+  int height_; //!< Image height
+  int fps_; //!< Video fps
   uint32_t session_id_; //!< Session identifier
   //! Worker that receives data on rtp_socket_ and provide it to all observers
   std::thread rtp_data_receiving_worker_;
@@ -76,6 +100,13 @@ class Client : public frame::Provider {
   Response SendOptionsRequest();
 
   /**
+   * @brief Handle server's response to the OPTIONS request
+   *
+   * @param response Server's response to the OPTIONS request
+   */
+  void HandleOptionsResponse(const Response &response);
+
+  /**
    * @brief Send DESCRIBE request to the server
    *
    * @return Response from server
@@ -83,11 +114,25 @@ class Client : public frame::Provider {
   Response SendDescribeRequest();
 
   /**
+   * @brief Handle server's response to the DESCRIBE request
+   *
+   * @param response Server's response to the DESCRIBE request
+   */
+  void HandleDescribeResponse(const Response &response);
+
+  /**
    * @brief Send SETUP request to the server
    *
    * @return Response from server
    */
   Response SendSetupRequest();
+
+  /**
+   * @brief Handle server's response to the SETUP request
+   *
+   * @param response Server's response to the SETUP request
+   */
+  void HandleSetupResponse(const Response &response);
 
   /**
    * @brief Send PLAY request to the server
@@ -102,11 +147,6 @@ class Client : public frame::Provider {
    * @return Response from server
    */
   Response SendTeardownRequest();
-
-  /**
-   * @brief Append path to the video track in the url using session_description_
-   */
-  void AppendVideoPathInUrl();
 
   /**
    * @brief Build basic request skeleton. CSeq counting is done automatically
@@ -134,6 +174,42 @@ class Client : public frame::Provider {
    * @brief Receive data on rtp_socket_, pack it to jpeg and provide to all observers
    */
   void RtpDataReceiving();
+
+  /**
+   * @brief Find "video" media description
+   *
+   * @return Iterator, pointing to the "video" media description
+   * @return media_descriptions.end(), if no such media description
+   */
+  static std::vector<sdp::MediaDescription>::const_iterator FindVideoMediaDescription(
+      const std::vector<sdp::MediaDescription> &media_descriptions);
+
+  /**
+   * @brief Extract video path from SDP Media Description
+   *
+   * @param description SDP Media Description
+   * @return Path to the video media with leading '/'
+   * @return "" if can' find video media description
+   */
+  static std::string ExtractVideoPath(const sdp::MediaDescription &description);
+
+  /**
+   * @brief Extract image width and height from SDP Media Description
+   * @throw std::runtime_error if can't find "cliprect" attribute in description
+   *
+   * @param description SDP Media Description
+   * @return Pair of width and height
+   */
+  static std::pair<int, int> ExtractDimensions(const sdp::MediaDescription &description);
+
+  /**
+   * @brief Extract video fps from SDP Media Description
+   * @throw std::runtime_error if can't find "framerate" attribute in description
+   *
+   * @param description SDP Media Description
+   * @return Video fps
+   */
+  static int ExtractFps(const sdp::MediaDescription &description);
 
   /**
    * @brief Check if response has 200 status code

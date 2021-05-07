@@ -51,30 +51,9 @@ worker_mutex_() {
                              server_ip + ':' + std::to_string(port));
   }
 
-  const char kPublicHeader[] = "Public";
-  Response response = SendOptionsRequest();
-  if (!response.headers.count(kPublicHeader)) {
-    throw std::runtime_error("Server did not send acceptable methods");
-  }
-  VerifyAcceptableMethods(Split(response.headers.at(kPublicHeader), ", "));
-
-  response = SendDescribeRequest();
-  session_description_ = sdp::ParseSessionDescription(response.body);
-  AppendVideoPathInUrl();
-
-  response = SendSetupRequest();
-  const char kTransportHeader[] = "Transport";
-  if (!response.headers.count(kTransportHeader) ||
-      response.headers.at(kTransportHeader).find("RTP/AVP") == std::string::npos) {
-    throw std::runtime_error("Server doesn't allow RTP/AVP translation");
-  }
-
-  const char kSessionHeader[] = "Session";
-  if (!response.headers.count(kSessionHeader)) {
-    throw std::runtime_error(
-        "Server's response on SETUP request doesn't have Session header");
-  }
-  session_id_ = std::stoul(response.headers.at(kSessionHeader));
+  HandleOptionsResponse(SendOptionsRequest());
+  HandleDescribeResponse(SendDescribeRequest());
+  HandleSetupResponse(SendSetupRequest());
 
   (void)SendPlayRequest();
   rtp_data_receiving_worker_ = std::thread(&Client::RtpDataReceiving, this);
@@ -90,11 +69,31 @@ Client::~Client() {
   rtp_data_receiving_worker_.join();
 }
 
+int Client::GetWidth() const {
+  return width_;
+}
+
+int Client::GetHeight() const {
+  return height_;
+}
+
+int Client::GetFps() const {
+  return fps_;
+}
+
 Response Client::SendOptionsRequest() {
   Request request = BuildRequestSkeleton(Method::kOptions);
   SendRequest(request);
 
   return ReceiveResponse();
+}
+
+void Client::HandleOptionsResponse(const Response &response) {
+  const char kPublicHeader[] = "Public";
+  if (!response.headers.count(kPublicHeader)) {
+    throw std::runtime_error("Server did not send acceptable methods");
+  }
+  VerifyAcceptableMethods(Split(response.headers.at(kPublicHeader), ", "));
 }
 
 Response Client::SendDescribeRequest() {
@@ -103,6 +102,19 @@ Response Client::SendDescribeRequest() {
   SendRequest(request);
 
   return ReceiveResponse();
+}
+
+void Client::HandleDescribeResponse(const Response &response) {
+  session_description_ = sdp::ParseSessionDescription(response.body);
+  auto video_description_it =
+      FindVideoMediaDescription(session_description_.media_descriptions);
+  if (video_description_it == session_description_.media_descriptions.end()) {
+    throw std::runtime_error(
+        "There is no required \"video\" media description in server's SDP");
+  }
+  url_ += ExtractVideoPath(*video_description_it);
+  std::tie(width_, height_) = ExtractDimensions(*video_description_it);
+  fps_ = ExtractFps(*video_description_it);
 }
 
 Response Client::SendSetupRequest() {
@@ -114,6 +126,21 @@ Response Client::SendSetupRequest() {
   SendRequest(request);
 
   return ReceiveResponse();
+}
+
+void Client::HandleSetupResponse(const Response &response) {
+  const char kTransportHeader[] = "Transport";
+  if (!response.headers.count(kTransportHeader) ||
+      response.headers.at(kTransportHeader).find("RTP/AVP") == std::string::npos) {
+    throw std::runtime_error("Server doesn't allow RTP/AVP translation");
+  }
+
+  const char kSessionHeader[] = "Session";
+  if (!response.headers.count(kSessionHeader)) {
+    throw std::runtime_error(
+        "Server's response on SETUP request doesn't have Session header");
+  }
+  session_id_ = std::stoul(response.headers.at(kSessionHeader));
 }
 
 Response Client::SendPlayRequest() {
@@ -131,28 +158,6 @@ Response Client::SendTeardownRequest() {
   SendRequest(request);
 
   return ReceiveResponse();
-}
-
-void Client::AppendVideoPathInUrl() {
-  const auto &media_descriptions = session_description_.media_descriptions;
-  auto video_it = std::find_if(media_descriptions.begin(), media_descriptions.end(),
-      [] (const sdp::MediaDescription &media_description) {
-        return media_description.name.find("video") != std::string::npos;
-      });
-  if (video_it == media_descriptions.end()) {
-    return;
-  }
-
-  const auto &attributes = video_it->attributes;
-  auto control_it = std::find_if(attributes.begin(), attributes.end(),
-      [] (const sdp::Attribute &attr) {
-        return attr.first == "control";
-      });
-  if (control_it == attributes.end()) {
-    return;
-  }
-
-  url_ += "/"s + control_it->second;
 }
 
 Request Client::BuildRequestSkeleton(const Method method) {
@@ -204,6 +209,76 @@ void Client::RtpDataReceiving() {
       mjpeg_packets.clear();
     }
   }
+}
+
+std::vector<sdp::MediaDescription>::const_iterator Client::FindVideoMediaDescription(
+    const std::vector<sdp::MediaDescription> &media_descriptions) {
+  return std::find_if(media_descriptions.begin(), media_descriptions.end(),
+                      [] (const sdp::MediaDescription &media_description) {
+                        return media_description.name.find("video") != std::string::npos;
+                      });
+}
+
+std::string Client::ExtractVideoPath(const sdp::MediaDescription &description) {
+  const auto &attributes = description.attributes;
+  auto control_it = std::find_if(attributes.begin(), attributes.end(),
+                                 [] (const sdp::Attribute &attr) {
+                                   return attr.first == "control";
+                                 });
+  if (control_it == attributes.end()) {
+    return "";
+  }
+
+  return ("/"s + control_it->second);
+}
+
+std::pair<int, int> Client::ExtractDimensions(
+    const sdp::MediaDescription &description) {
+  const auto &attributes = description.attributes;
+  auto cliprect_it = std::find_if(attributes.begin(), attributes.end(),
+                                  [] (const sdp::Attribute &attr) {
+                                    return attr.first == "cliprect";
+                                  });
+  const std::string full_description_name = description.name +
+                                            R"(" media description)";
+  if (cliprect_it == attributes.end()) {
+    throw std::runtime_error(
+        R"(There is no required "cliprect" attribute in ")" +
+        full_description_name);
+  }
+
+  const std::string &cliprect = cliprect_it->second;
+  const std::string::size_type last_coma_pos = cliprect.rfind(',');
+  const std::string::size_type pre_last_coma_pos =
+      cliprect.rfind(',', last_coma_pos - 1);
+
+  if ((last_coma_pos == std::string::npos) ||
+      (pre_last_coma_pos == std::string::npos)) {
+    throw std::runtime_error(R"(Invalid "cliprect" attribute in ")" +
+                             full_description_name);
+  }
+  int width = std::stoi(cliprect.substr(last_coma_pos + 1));
+  int height = std::stoi(cliprect.substr(pre_last_coma_pos + 1,
+                                         last_coma_pos - pre_last_coma_pos - 1));
+
+  return {width, height};
+}
+
+int Client::ExtractFps(const sdp::MediaDescription &description) {
+  const auto &attributes = description.attributes;
+  auto framerate_it = std::find_if(attributes.begin(), attributes.end(),
+                                  [] (const sdp::Attribute &attr) {
+                                    return attr.first == "framerate";
+                                  });
+  const std::string full_description_name = description.name +
+                                            R"(" media description)";
+  if (framerate_it == attributes.end()) {
+    throw std::runtime_error(
+        R"(There is no required "cliprect" attribute in ")" +
+        full_description_name);
+  }
+
+  return std::stoi(framerate_it->second);
 }
 
 void Client::VerifyResponseIsOk(const Response &response) {
