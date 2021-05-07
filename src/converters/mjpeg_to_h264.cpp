@@ -30,8 +30,11 @@ extern "C" {
 #include <libavutil/imgutils.h>
 }
 
-#include <iostream>
-#include <string>
+namespace {
+
+static uint32_t kH264SampleRate = 90'000;
+
+} // namespace
 
 namespace converters {
 
@@ -43,8 +46,8 @@ dst_frame_ptr_(nullptr),
 src_packet_ptr_(nullptr),
 dst_packet_ptr_(nullptr),
 dst_size_(0),
-sws_context_ptr_(0),
-file_("video.h264", std::ios::out | std::ios::binary) {
+sws_context_ptr_(nullptr),
+frame_counter_(0) {
   AVCodec *dec = avcodec_find_decoder(AV_CODEC_ID_MJPEG);
   dec_context_ptr_ = avcodec_alloc_context3(dec);
   dec_context_ptr_->width = 1280; //!< @TODO Get width from server
@@ -66,8 +69,10 @@ file_("video.h264", std::ios::out | std::ios::binary) {
   enc_context_ptr_->height = 960; //!< @TODO Get height from server
   enc_context_ptr_->bit_rate = 1024;
   enc_context_ptr_->pix_fmt = AV_PIX_FMT_YUV420P;
-  enc_context_ptr_->time_base.den = 10; //!< @TODO Get fps from server
   enc_context_ptr_->time_base.num = 1;
+  enc_context_ptr_->time_base.den = 10; //!< @TODO Get fps from server
+  enc_context_ptr_->framerate.num = 10; //!< @TODO Get fps from server
+  enc_context_ptr_->framerate.den = 1;
   enc_context_ptr_->gop_size = 12;
   enc_context_ptr_->max_b_frames = 0;
   av_opt_set(enc_context_ptr_->priv_data, "preset", "slow", 0);
@@ -86,7 +91,13 @@ file_("video.h264", std::ios::out | std::ios::binary) {
   src_packet_ptr_ = av_packet_alloc();
 
   dst_frame_ptr_ = av_frame_alloc();
-  dst_size_ = av_image_alloc(dst_frame_ptr_->data, dst_frame_ptr_->linesize, enc_context_ptr_->width, enc_context_ptr_->height, enc_context_ptr_->pix_fmt, 32);
+  int res = av_image_alloc(dst_frame_ptr_->data, dst_frame_ptr_->linesize,
+                           enc_context_ptr_->width, enc_context_ptr_->height,
+                           enc_context_ptr_->pix_fmt, 32);
+  if (res < 0) {
+    throw std::runtime_error("Can't allocate memory for image");
+  }
+
   dst_frame_ptr_->width = enc_context_ptr_->width;
   dst_frame_ptr_->height = enc_context_ptr_->height;
   dst_frame_ptr_->format = static_cast<int>(enc_context_ptr_->pix_fmt);
@@ -105,25 +116,7 @@ MjpegToH264::~MjpegToH264() noexcept {
   av_packet_free(&dst_packet_ptr_);
 }
 
-static int frame_counter = 0;
-
-static void PgmSave(unsigned char *buf, int wrap, int xsize, int ysize,
-                    char *filename)
-{
-  FILE *f;
-  int i;
-
-  f = fopen(filename,"wb");
-  fprintf(f, "P5\n%d %d\n%d\n", xsize, ysize, 255);
-  for (i = 0; i < ysize; i++)
-    fwrite(buf + i * wrap, 1, xsize, f);
-  fclose(f);
-}
-
 void MjpegToH264::Receive(const Bytes &data) {
-  ++frame_counter;
-  std::cout << "Received MJPEG frame of " << data.size() << " bytes size" << std::endl;
-
   src_packet_ptr_->data = const_cast<Byte *>(data.data());
   src_packet_ptr_->size = data.size();
 
@@ -133,7 +126,7 @@ void MjpegToH264::Receive(const Bytes &data) {
   }
 
   while (res >= 0) {
-    res = avcodec_receive_frame(dec_context_ptr_, dst_frame_ptr_);
+    res = avcodec_receive_frame(dec_context_ptr_, src_frame_ptr_);
     if ((res == AVERROR(EAGAIN)) || (res == AVERROR_EOF)) {
       return;
     } else if (res < 0) {
@@ -142,21 +135,17 @@ void MjpegToH264::Receive(const Bytes &data) {
 
     EncodeToH264();
   }
+
+  ++frame_counter_;
 }
 
 void MjpegToH264::EncodeToH264() {
   sws_scale(sws_context_ptr_, src_frame_ptr_->data, src_frame_ptr_->linesize, 0,
             src_frame_ptr_->height, dst_frame_ptr_->data, dst_frame_ptr_->linesize);
 
-  dst_frame_ptr_->pts = (1.0 / 30) * 90 * frame_counter;
-  dst_packet_ptr_->pts = dst_frame_ptr_->pts;
-  dst_packet_ptr_->dts = dst_packet_ptr_->pts;
-
-//  char buf[1024];
-//  snprintf(buf, sizeof(buf), "frame-%d.pgm", dec_context_ptr_->frame_number);
-//  PgmSave(dst_frame_ptr_->data[0], dst_frame_ptr_->linesize[0],
-//          dst_frame_ptr_->width, dst_frame_ptr_->height, buf);
-//  std::cout << "Saved " << buf << std::endl;
+  dst_frame_ptr_->pts = (1.0 / 10) * kH264SampleRate * frame_counter_; //!< @TODO Get fps from server
+  dst_packet_ptr_->dts = dst_frame_ptr_->pts;
+  dst_packet_ptr_->pts = dst_packet_ptr_->dts;
 
   int res = avcodec_send_frame(enc_context_ptr_, dst_frame_ptr_);
   if (res < 0) {
@@ -171,12 +160,7 @@ void MjpegToH264::EncodeToH264() {
       throw std::runtime_error("Error during encoding");
     }
 
-    std::cout << "Prepared H264 frame of " << dst_packet_ptr_->size << " bytes size" << std::endl;
     ProvideToAll({dst_packet_ptr_->data, dst_packet_ptr_->data + dst_packet_ptr_->size});
-    char const start_code[4] = {0x00, 0x00, 0x00, 0x01};
-    file_.write(start_code, 4);
-    file_.write(reinterpret_cast<const char *>(dst_packet_ptr_->data),
-                dst_packet_ptr_->size);
     av_packet_unref(dst_packet_ptr_);
   }
 }

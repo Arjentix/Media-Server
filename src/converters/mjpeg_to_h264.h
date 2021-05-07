@@ -32,8 +32,6 @@ extern "C" {
 #include <libswscale/swscale.h>
 }
 
-#include <fstream>
-
 namespace converters {
 
 /**
@@ -60,9 +58,8 @@ namespace converters {
    AVFrame *dst_frame_ptr_;
    AVPacket *src_packet_ptr_;
    AVPacket *dst_packet_ptr_;
-   int dst_size_;
    SwsContext *sws_context_ptr_;
-   std::ofstream file_;
+   uint64_t frame_counter_;
 
    void EncodeToH264();
 };
