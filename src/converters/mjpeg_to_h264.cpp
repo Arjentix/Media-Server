@@ -30,6 +30,8 @@ extern "C" {
 #include <libavutil/imgutils.h>
 }
 
+#include <iostream>
+
 namespace {
 
 const uint32_t kH264SampleRate = 90'000;
@@ -161,7 +163,10 @@ void MjpegToH264::EncodeToH264() {
       throw std::runtime_error("Error during encoding");
     }
 
-    ProvideToAll({dst_packet_ptr_->data, dst_packet_ptr_->data + dst_packet_ptr_->size});
+//    ProvideToAll({dst_packet_ptr_->data, dst_packet_ptr_->data + dst_packet_ptr_->size});
+    std::cout << "Sent pts = " << dst_packet_ptr_->pts << std::endl;
+    ProvideToAll({reinterpret_cast<Byte *>(dst_packet_ptr_),
+                  reinterpret_cast<Byte *>(dst_packet_ptr_) + sizeof(*dst_packet_ptr_)});
     av_packet_unref(dst_packet_ptr_);
   }
 }

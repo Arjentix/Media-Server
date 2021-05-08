@@ -32,6 +32,7 @@ SOFTWARE.
 #include "port_handler/port_handler_manager.h"
 #include "rtsp/client.h"
 #include "converters/mjpeg_to_h264.h"
+#include "converters/mpeg2ts_packager.h"
 
 namespace {
 
@@ -64,8 +65,12 @@ frame::ProviderManager BuildFrameProviderManager() {
       rtsp_client_ptr->GetFps());
   rtsp_client_ptr->AddObserver(h264_converter_ptr);
 
+  auto mpeg2ts_packager_ptr = std::make_shared<converters::Mpeg2TsPackager>();
+  h264_converter_ptr->AddObserver(mpeg2ts_packager_ptr);
+
   frame_provider_manager.Register("source1", "MJPEG", rtsp_client_ptr)
-                        .Register("source1", "H.264", h264_converter_ptr);
+                        .Register("source1", "H.264", h264_converter_ptr)
+                        .Register("source1", "MPEG2-TS", mpeg2ts_packager_ptr);
   return frame_provider_manager;
 }
 
