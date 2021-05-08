@@ -70,13 +70,13 @@ format_context_ptr_(nullptr),
 buffer_ptr_(nullptr),
 output_context_ptr_(nullptr),
 packet_ptr_(nullptr) {
-  BufferData bd;
+//  BufferData bd;
 
-  buffer_ptr_ = reinterpret_cast<Byte *>(av_malloc(kBufferSize));
-  output_context_ptr_ = avio_alloc_context(buffer_ptr_, kBufferSize, 1, &bd, NULL, WritePacket, NULL);
-  if (output_context_ptr_ == NULL) {
-    throw std::runtime_error("Could not create context");
-  }
+//  buffer_ptr_ = reinterpret_cast<Byte *>(av_malloc(kBufferSize));
+//  output_context_ptr_ = avio_alloc_context(buffer_ptr_, kBufferSize, 1, &bd, NULL, WritePacket, NULL);
+//  if (output_context_ptr_ == NULL) {
+//    throw std::runtime_error("Could not create context");
+//  }
 
 //  avformat_alloc_output_context2(&format_context_ptr_, NULL, "mpeg2ts", NULL);
   avformat_alloc_output_context2(&format_context_ptr_, NULL, "mpeg", "video.mpeg"); // Delete
