@@ -23,6 +23,7 @@ set(SOURCES
     ${SRC_DIR}/rtp/packet.cpp
     ${SRC_DIR}/rtp/mjpeg/packet.cpp
     ${SRC_DIR}/converters/mjpeg_to_h264.cpp
+    ${SRC_DIR}/converters/mpeg2ts_packager.cpp
 )
 
 find_package(Threads REQUIRED)
