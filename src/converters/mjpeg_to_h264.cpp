@@ -108,6 +108,7 @@ frame_counter_(0) {
 }
 
 MjpegToH264::~MjpegToH264() noexcept {
+  sws_freeContext(sws_context_ptr_);
   avcodec_free_context(&dec_context_ptr_);
   avcodec_free_context(&enc_context_ptr_);
   av_freep(&dst_frame_ptr_->data);
