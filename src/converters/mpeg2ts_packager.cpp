@@ -24,42 +24,15 @@ SOFTWARE.
 
 #include "mpeg2ts_packager.h"
 
-#include <iostream>
 #include <stdexcept>
+#include <fstream> // Delete
 
 namespace {
 
-const int kBufferSize = 1024;
+const int kOutputContextBufferSize = 4096;
+const int kBufferDataBufferSize = 1024;
 
 const float kOneContainerDurationInSec = 10.0;
-
-struct BufferData {
-  uint8_t *buf; //!< Buffer
-  size_t size; //!< Size of buffer
-  uint8_t *ptr; //!< Pointer to the empty data
-  size_t room; //!< Size left in the buffer
-};
-
-int WritePacket(void *opaque, uint8_t *buf, int buf_size) {
-  BufferData *bd = reinterpret_cast<BufferData *>(opaque);
-  while (buf_size > static_cast<int>(bd->room)) {
-    int64_t offset = bd->ptr - bd->buf;
-    bd->buf = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buf, 2, bd->size));
-    if (!bd->buf) {
-      return AVERROR(ENOMEM);
-    }
-    bd->size *= 2;
-    bd->ptr = bd->buf + offset;
-    bd->room = bd->size - offset;
-  }
-  printf("write packet pkt_size:%d used_buf_size:%zu buf_size:%zu buf_room:%zu\n", buf_size, bd->ptr-bd->buf, bd->size, bd->room);
-
-  memcpy(bd->ptr, buf, buf_size);
-  bd->ptr += buf_size;
-  bd->room -= buf_size;
-
-  return buf_size;
-}
 
 } // namespace
 
@@ -67,30 +40,30 @@ namespace converters {
 
 Mpeg2TsPackager::Mpeg2TsPackager():
 format_context_ptr_(nullptr),
-buffer_ptr_(nullptr),
+buffer_data_(),
 output_context_ptr_(nullptr),
 packet_ptr_(nullptr) {
-//  BufferData bd;
+  Byte *output_context_buffer_ptr = reinterpret_cast<Byte *>(av_malloc(kOutputContextBufferSize));
 
-//  buffer_ptr_ = reinterpret_cast<Byte *>(av_malloc(kBufferSize));
-//  output_context_ptr_ = avio_alloc_context(buffer_ptr_, kBufferSize, 1, &bd, NULL, WritePacket, NULL);
-//  if (output_context_ptr_ == NULL) {
-//    throw std::runtime_error("Could not create context");
-//  }
+  buffer_data_.buf = reinterpret_cast<uint8_t *>(av_malloc(kBufferDataBufferSize));
+  if (buffer_data_.buf == NULL) {
+    throw std::runtime_error("Can't allocate BufferData buffer");
+  }
+  buffer_data_.ptr = buffer_data_.buf;
+  buffer_data_.room = kBufferDataBufferSize;
+  buffer_data_.size = kBufferDataBufferSize;
 
-//  avformat_alloc_output_context2(&format_context_ptr_, NULL, "mpeg2ts", NULL);
-  avformat_alloc_output_context2(&format_context_ptr_, NULL, "mpeg", "video.mpeg"); // Delete
+  output_context_ptr_ = avio_alloc_context(output_context_buffer_ptr, kOutputContextBufferSize, 1, &buffer_data_, NULL, WritePacket, NULL);
+  if (output_context_ptr_ == NULL) {
+    throw std::runtime_error("Could not create context");
+  }
+
+
+  avformat_alloc_output_context2(&format_context_ptr_, NULL, "mpegts", NULL);
   if (format_context_ptr_ == NULL) {
     throw std::runtime_error("Could not create MPEG-2 TS output format context");
   }
-//  format_context_ptr_->pb = output_context_ptr_;
-  // vvvvv Delete
-  if (!(format_context_ptr_->oformat->flags & AVFMT_NOFILE)) {
-    if (avio_open(&format_context_ptr_->pb, "video.mpeg", AVIO_FLAG_WRITE) < 0) {
-      throw std::runtime_error("Could not open output file");
-    }
-  }
-  // ^^^^ Delete
+  format_context_ptr_->pb = output_context_ptr_;
 
   AVCodec *video_codec_ptr = avcodec_find_encoder(AV_CODEC_ID_H264);
   AVStream *video_stream_ptr = avformat_new_stream(format_context_ptr_, video_codec_ptr);
@@ -115,22 +88,47 @@ packet_ptr_(nullptr) {
 Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
   av_write_trailer(format_context_ptr_);
 
-  avio_closep(&format_context_ptr_->pb); // Delete
+  // Delete next block
+  {
+    std::ofstream file("video.mpegts", std::ios::out | std::ios::binary);
+    file.write(reinterpret_cast<const char *>(buffer_data_.buf), buffer_data_.size);
+  }
+
   av_packet_free(&packet_ptr_);
-  avio_context_free(&output_context_ptr_);
   avformat_free_context(format_context_ptr_);
-//  av_freep(&buffer_ptr_);
+  av_freep(&output_context_ptr_->buffer);
+  avio_context_free(&output_context_ptr_);
+  av_free(buffer_data_.buf);
 }
 
 void Mpeg2TsPackager::Receive(const Bytes &data) {
   av_packet_ref(packet_ptr_, reinterpret_cast<AVPacket *>(const_cast<Byte *>(data.data())));
-  std::cout << "Received pts = " << packet_ptr_->pts << std::endl;
 
   if (av_interleaved_write_frame(format_context_ptr_, packet_ptr_)) {
     throw std::runtime_error("Can't write packet");
   }
 
   av_packet_unref(packet_ptr_);
+}
+
+int Mpeg2TsPackager::WritePacket(void *opaque, uint8_t *buf, int buf_size) {
+  BufferData *bd = reinterpret_cast<BufferData *>(opaque);
+  while (buf_size > static_cast<int>(bd->room)) {
+    int64_t offset = bd->ptr - bd->buf;
+    bd->buf = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buf, 2, bd->size));
+    if (!bd->buf) {
+      return AVERROR(ENOMEM);
+    }
+    bd->size *= 2;
+    bd->ptr = bd->buf + offset;
+    bd->room = bd->size - offset;
+  }
+
+  memcpy(bd->ptr, buf, buf_size);
+  bd->ptr += buf_size;
+  bd->room -= buf_size;
+
+  return buf_size;
 }
 
 } // namespace converters

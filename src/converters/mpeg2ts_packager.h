@@ -49,10 +49,19 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   void Receive(const Bytes &data) override;
 
  private:
+  struct BufferData {
+    uint8_t *buf; //!< Buffer
+    size_t size; //!< Size of buffer
+    uint8_t *ptr; //!< Pointer to the empty data
+    size_t room; //!< Size left in the buffer
+  };
+
   AVFormatContext *format_context_ptr_;
-  Byte *buffer_ptr_;
+  BufferData buffer_data_;
   AVIOContext *output_context_ptr_;
   AVPacket *packet_ptr_;
+
+  static int WritePacket(void *opaque, uint8_t *buf, int buf_size);
 };
 
 } // namespace converters
