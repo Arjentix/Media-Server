@@ -30,7 +30,6 @@ SOFTWARE.
 namespace {
 
 const int kOutputContextBufferSize = 4096;
-const int kBufferDataBufferSize = 1024;
 
 const float kOneContainerDurationInSec = 10.0;
 
@@ -44,12 +43,10 @@ buffer_data_(),
 format_context_ptr_(nullptr),
 packet_ptr_(nullptr) {
   Byte *output_context_buffer_ptr = reinterpret_cast<Byte *>(av_malloc(kOutputContextBufferSize));
-
-  output_context_ptr_ = avio_alloc_context(output_context_buffer_ptr, kOutputContextBufferSize, 1, &buffer_data_, NULL, WritePacket, NULL);
+  output_context_ptr_ = avio_alloc_context(output_context_buffer_ptr, kOutputContextBufferSize, 1, &buffer_data_, NULL, BufferData::WritePacket, NULL);
   if (output_context_ptr_ == NULL) {
     throw std::runtime_error("Could not create context");
   }
-
 
   avformat_alloc_output_context2(&format_context_ptr_, NULL, "mpegts", NULL);
   if (format_context_ptr_ == NULL) {
@@ -83,7 +80,7 @@ Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
   // Delete next block
   {
     std::ofstream file("video.mpegts", std::ios::out | std::ios::binary);
-    file.write(reinterpret_cast<const char *>(buffer_data_.buf), buffer_data_.size);
+    file.write(reinterpret_cast<const char *>(buffer_data_.GetBufferPtr()), buffer_data_.GetBufferSize());
   }
 
   av_packet_free(&packet_ptr_);
@@ -103,40 +100,48 @@ void Mpeg2TsPackager::Receive(const Bytes &data) {
 }
 
 Mpeg2TsPackager::BufferData::BufferData():
-buf(nullptr),
-size(0),
-ptr(nullptr),
-room(0) {
-  buf = reinterpret_cast<uint8_t *>(av_malloc(kBufferDataBufferSize));
-  if (buf == NULL) {
+buf_(nullptr),
+size_(0),
+ptr_(nullptr),
+room_(0) {
+  buf_ = reinterpret_cast<uint8_t *>(av_malloc(kInitBufferSize));
+  if (buf_ == NULL) {
     throw std::runtime_error("Can't allocate BufferData buffer");
   }
 
-  ptr = buf;
-  room = kBufferDataBufferSize;
-  size = kBufferDataBufferSize;
+  ptr_ = buf_;
+  room_ = kInitBufferSize;
+  size_ = kInitBufferSize;
 }
 
 Mpeg2TsPackager::BufferData::~BufferData() {
-  av_free(buf);
+  av_free(buf_);
 }
 
-int Mpeg2TsPackager::WritePacket(void *opaque, uint8_t *buf, int buf_size) {
+uint8_t *Mpeg2TsPackager::BufferData::GetBufferPtr() {
+  return buf_;
+}
+
+size_t Mpeg2TsPackager::BufferData::GetBufferSize() {
+  return size_;
+}
+
+int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf, int buf_size) {
   BufferData *bd = reinterpret_cast<BufferData *>(opaque);
-  while (buf_size > static_cast<int>(bd->room)) {
-    int64_t offset = bd->ptr - bd->buf;
-    bd->buf = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buf, 2, bd->size));
-    if (!bd->buf) {
+  while (buf_size > static_cast<int>(bd->room_)) {
+    int64_t offset = bd->ptr_ - bd->buf_;
+    bd->buf_ = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buf_, 2, bd->size_));
+    if (!bd->buf_) {
       return AVERROR(ENOMEM);
     }
-    bd->size *= 2;
-    bd->ptr = bd->buf + offset;
-    bd->room = bd->size - offset;
+    bd->size_ *= 2;
+    bd->ptr_ = bd->buf_ + offset;
+    bd->room_ = bd->size_ - offset;
   }
 
-  memcpy(bd->ptr, buf, buf_size);
-  bd->ptr += buf_size;
-  bd->room -= buf_size;
+  memcpy(bd->ptr_, buf, buf_size);
+  bd->ptr_ += buf_size;
+  bd->room_ -= buf_size;
 
   return buf_size;
 }
