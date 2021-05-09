@@ -100,50 +100,50 @@ void Mpeg2TsPackager::Receive(const Bytes &data) {
 }
 
 Mpeg2TsPackager::BufferData::BufferData():
-buf_(nullptr),
+buffer_ptr_(nullptr),
 size_(0),
-ptr_(nullptr),
-room_(0) {
-  buf_ = reinterpret_cast<uint8_t *>(av_malloc(kInitBufferSize));
-  if (buf_ == NULL) {
+end_ptr_(nullptr),
+left_size_(0) {
+  buffer_ptr_ = reinterpret_cast<uint8_t *>(av_malloc(kInitBufferSize));
+  if (buffer_ptr_ == NULL) {
     throw std::runtime_error("Can't allocate BufferData buffer");
   }
 
-  ptr_ = buf_;
-  room_ = kInitBufferSize;
+  end_ptr_ = buffer_ptr_;
+  left_size_ = kInitBufferSize;
   size_ = kInitBufferSize;
 }
 
 Mpeg2TsPackager::BufferData::~BufferData() {
-  av_free(buf_);
+  av_free(buffer_ptr_);
 }
 
 uint8_t *Mpeg2TsPackager::BufferData::GetBufferPtr() {
-  return buf_;
+  return buffer_ptr_;
 }
 
 size_t Mpeg2TsPackager::BufferData::GetBufferSize() {
   return size_;
 }
 
-int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf, int buf_size) {
+int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf, int buffer_ptr_size) {
   BufferData *bd = reinterpret_cast<BufferData *>(opaque);
-  while (buf_size > static_cast<int>(bd->room_)) {
-    int64_t offset = bd->ptr_ - bd->buf_;
-    bd->buf_ = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buf_, 2, bd->size_));
-    if (!bd->buf_) {
+  while (buffer_ptr_size > static_cast<int>(bd->left_size_)) {
+    int64_t offset = bd->end_ptr_ - bd->buffer_ptr_;
+    bd->buffer_ptr_ = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buffer_ptr_, 2, bd->size_));
+    if (!bd->buffer_ptr_) {
       return AVERROR(ENOMEM);
     }
     bd->size_ *= 2;
-    bd->ptr_ = bd->buf_ + offset;
-    bd->room_ = bd->size_ - offset;
+    bd->end_ptr_ = bd->buffer_ptr_ + offset;
+    bd->left_size_ = bd->size_ - offset;
   }
 
-  memcpy(bd->ptr_, buf, buf_size);
-  bd->ptr_ += buf_size;
-  bd->room_ -= buf_size;
+  memcpy(bd->end_ptr_, buf, buffer_ptr_size);
+  bd->end_ptr_ += buffer_ptr_size;
+  bd->left_size_ -= buffer_ptr_size;
 
-  return buf_size;
+  return buffer_ptr_size;
 }
 
 } // namespace converters
