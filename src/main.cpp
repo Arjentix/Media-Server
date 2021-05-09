@@ -36,6 +36,8 @@ SOFTWARE.
 
 namespace {
 
+const float kHlsChunkDurationSec = 8.0;
+
 volatile bool stop_flag = false;
 
 void SignalHandler(int) {
@@ -68,7 +70,7 @@ frame::ProviderManager BuildFrameProviderManager() {
   rtsp_client_ptr->AddObserver(h264_converter_ptr);
 
   auto mpeg2ts_packager_ptr = std::make_shared<converters::Mpeg2TsPackager>(
-      width, height, fps);
+      width, height, fps, kHlsChunkDurationSec);
   h264_converter_ptr->AddObserver(mpeg2ts_packager_ptr);
 
   frame_provider_manager.Register("source1", "MJPEG", rtsp_client_ptr)

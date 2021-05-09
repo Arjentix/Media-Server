@@ -24,23 +24,19 @@ SOFTWARE.
 
 #include "mpeg2ts_packager.h"
 
-#include <stdexcept>
-#include <fstream> // Delete
-
-namespace {
-
-const int kOutputContextBufferSize = 4096;
-
-const float kOneContainerDurationInSec = 10.0;
-
-} // namespace
+//#include <iostream>
+//#include <fstream>
 
 namespace converters {
 
-Mpeg2TsPackager::Mpeg2TsPackager(const int width, const int height, const int fps):
+Mpeg2TsPackager::Mpeg2TsPackager(const int width, const int height,
+                                 const int fps, const float chunk_duration):
 width_(width),
 height_(height),
 fps_(fps),
+chunk_duration_(chunk_duration),
+frames_per_chunk_(fps_ * chunk_duration_),
+chunk_frame_counter_(0),
 output_context_ptr_(nullptr),
 buffer_data_(),
 format_context_ptr_(nullptr),
@@ -49,23 +45,12 @@ packet_ptr_(nullptr) {
   InitFormatContext();
   InitVideoStream();
 
-  if (avformat_write_header(format_context_ptr_, NULL) < 0) {
-    throw std::runtime_error("Could not write header");
-  }
-
   packet_ptr_ = av_packet_alloc();
+
+  WriteHeader();
 }
 
 Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
-  av_write_trailer(format_context_ptr_);
-
-  // Delete next block
-  {
-    std::ofstream file("video.mpegts", std::ios::out | std::ios::binary);
-    const Bytes &data = buffer_data_.GetData();
-    file.write(reinterpret_cast<const char *>(data.data()), data.size());
-  }
-
   av_packet_free(&packet_ptr_);
   avformat_free_context(format_context_ptr_);
   av_freep(&output_context_ptr_->buffer);
@@ -73,17 +58,40 @@ Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
 }
 
 void Mpeg2TsPackager::Receive(const Bytes &data) {
-  av_packet_ref(packet_ptr_, reinterpret_cast<AVPacket *>(
-      const_cast<Byte *>(data.data())));
+  ++chunk_frame_counter_;
 
-  if (av_interleaved_write_frame(format_context_ptr_, packet_ptr_)) {
-    throw std::runtime_error("Can't write packet");
+  WriteFrame(data);
+
+  if (chunk_frame_counter_ >= static_cast<int>(frames_per_chunk_)) {
+    WriteTrailer();
+
+    // Saving chunk
+//    {
+//      using namespace std::string_literals;
+//      static int chunk_counter = 0;
+//
+//      ++chunk_counter;
+//      const std::string filename = "chunk"s + std::to_string(chunk_counter) +
+//                                   ".mpegts";
+//      std::ofstream file(filename, std::ios::out | std::ios::binary);
+//      const Bytes &data_to_write = buffer_data_.GetData();
+//      file.write(reinterpret_cast<const char *>(data_to_write.data()),
+//                 data_to_write.size());
+//      std::cout << "Chunk saved in " << filename << std::endl;
+//    }
+
+    ProvideToAll(buffer_data_.GetData());
+
+    buffer_data_.Clear();
+    chunk_frame_counter_ = 0;
+
+    WriteHeader();
   }
-
-  av_packet_unref(packet_ptr_);
 }
 
 void Mpeg2TsPackager::InitOutputContext() {
+  const int kOutputContextBufferSize = 4096;
+
   Byte *output_context_buffer_ptr = reinterpret_cast<Byte *>(
       av_malloc(kOutputContextBufferSize));
   output_context_ptr_ = avio_alloc_context(
@@ -117,9 +125,36 @@ void Mpeg2TsPackager::InitVideoStream() {
   params_ptr->height = height_;
 }
 
+void Mpeg2TsPackager::WriteHeader() {
+  if (avformat_write_header(format_context_ptr_, NULL) < 0) {
+    throw std::runtime_error("Could not write header");
+  }
+}
+
+void Mpeg2TsPackager::WriteFrame(const Bytes &data) {
+  av_packet_ref(packet_ptr_, reinterpret_cast<AVPacket *>(
+      const_cast<Byte *>(data.data())));
+
+  if (av_interleaved_write_frame(format_context_ptr_, packet_ptr_)) {
+    throw std::runtime_error("Can't write packet");
+  }
+
+  av_packet_unref(packet_ptr_);
+}
+
+void Mpeg2TsPackager::WriteTrailer() {
+  if (av_write_trailer(format_context_ptr_) < 0) {
+    throw std::runtime_error("Could not write trailer");
+  }
+}
+
 
 const Bytes &Mpeg2TsPackager::BufferData::GetData() const {
   return data_;
+}
+
+void Mpeg2TsPackager::BufferData::Clear() {
+  data_.clear();
 }
 
 int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf,
@@ -131,4 +166,5 @@ int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf,
 
   return buf_size;
 }
+
 } // namespace converters

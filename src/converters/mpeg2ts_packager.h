@@ -34,7 +34,8 @@ extern "C" {
 namespace converters {
 
 /**
- * @brief This class receives video packets and pack them to the MPEG2-TS container
+ * @brief This class receives video packets and pack them into the MPEG2-TS chunks
+ * @detals It provides data to it's observes then chunk is ready
  * @note In fact it should also pack audio, but it is not supported right now
  */
 class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
@@ -43,8 +44,9 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
    * @param width Image width
    * @param height Image height
    * @param fps Video fps
+   * @param chunk_duration_sec Chunk max duration in seconds
    */
-  Mpeg2TsPackager(int width, int height, int fps);
+  Mpeg2TsPackager(int width, int height, int fps, float chunk_duration);
 
   ~Mpeg2TsPackager() noexcept override;
 
@@ -59,7 +61,17 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
    */
   class BufferData {
    public:
+    /**
+     * @brief Get saved data
+     *
+     * @return Data
+     */
     [[nodiscard]] const Bytes &GetData() const;
+
+    /**
+     * @brief Clear buffer
+     */
+    void Clear();
 
     /**
      * @brief Write data from buf to opaque
@@ -79,6 +91,9 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   const int width_; //!< Image width
   const int height_; //!< Image height
   const int fps_; //!< Video fps
+  const int chunk_duration_; //!< Chunk max duration
+  const float frames_per_chunk_; //!< Number of frames per chunk
+  int chunk_frame_counter_; //!< Number of frames for current chunk
   AVIOContext *output_context_ptr_; //!< Output context to write into buffer
   BufferData buffer_data_; //!< Buffer to write data
   //! Format context to pack data into container
@@ -99,6 +114,23 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
    * @brief Initialize video stream for format_context_ptr_
    */
   void InitVideoStream();
+
+  /**
+   * @brief Write container header
+   */
+  void WriteHeader();
+
+  /**
+   * @brief Write frame to buffer
+   *
+   * @param data Encoded frame (packet) represented in bytes
+   */
+  void WriteFrame(const Bytes &data);
+
+  /**
+   * @brief Write container trailer
+   */
+  void WriteTrailer();
 };
 
 } // namespace converters
