@@ -84,6 +84,21 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   //! Format context to pack data into container
   AVFormatContext *format_context_ptr_;
   AVPacket *packet_ptr_; //!< Packet with compressed data
+
+  /**
+   * @brief Init output_context_ptr_
+   */
+  void InitOutputContext();
+
+  /**
+   * @brief Init format_context_ptr_
+   */
+  void InitFormatContext();
+
+  /**
+   * @brief Initialize video stream for format_context_ptr_
+   */
+  void InitVideoStream();
 };
 
 } // namespace converters
