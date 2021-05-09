@@ -59,13 +59,16 @@ frame::ProviderManager BuildFrameProviderManager() {
   auto rtsp_client_ptr = std::make_shared<rtsp::Client>(
       kRtspSourceIp, kRtspSourcePort, kRtspSourceUrl);
 
+  const int width = rtsp_client_ptr->GetWidth();
+  const int height = rtsp_client_ptr->GetHeight();
+  const int fps = rtsp_client_ptr->GetFps();
+
   auto h264_converter_ptr = std::make_shared<converters::MjpegToH264>(
-      rtsp_client_ptr->GetWidth(),
-      rtsp_client_ptr->GetHeight(),
-      rtsp_client_ptr->GetFps());
+      width, height, fps);
   rtsp_client_ptr->AddObserver(h264_converter_ptr);
 
-  auto mpeg2ts_packager_ptr = std::make_shared<converters::Mpeg2TsPackager>();
+  auto mpeg2ts_packager_ptr = std::make_shared<converters::Mpeg2TsPackager>(
+      width, height, fps);
   h264_converter_ptr->AddObserver(mpeg2ts_packager_ptr);
 
   frame_provider_manager.Register("source1", "MJPEG", rtsp_client_ptr)

@@ -39,9 +39,14 @@ namespace converters {
  */
 class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
  public:
-  Mpeg2TsPackager();
+  /**
+   * @param width Image width
+   * @param height Image height
+   * @param fps Video fps
+   */
+  Mpeg2TsPackager(int width, int height, int fps);
 
-  ~Mpeg2TsPackager() noexcept;
+  ~Mpeg2TsPackager() noexcept override;
 
   Mpeg2TsPackager(const Mpeg2TsPackager &) = delete;
   Mpeg2TsPackager &operator=(const Mpeg2TsPackager &) = delete;
@@ -49,20 +54,36 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   void Receive(const Bytes &data) override;
 
  private:
+  /**
+   * @brief Class for ffmpeg avio_alloc_context() API. Used as buffer
+   */
   class BufferData {
    public:
     [[nodiscard]] const Bytes &GetData() const;
 
-    static int WritePacket(void *opaque, uint8_t *buf, int buf_size);
+    /**
+     * @brief Write data from buf to opaque
+     * @details Function for ffmpeg avio_alloc_context() API
+     *
+     * @param opaque Pointer to BufferData
+     * @param buf Pointer to data
+     * @param buf_size Size of data
+     * @return Size of writen data
+     */
+    static int WritePacket(void *opaque, Byte *buf, int buf_size);
 
    private:
     Bytes data_;
   };
 
-  AVIOContext *output_context_ptr_;
-  BufferData buffer_data_;
+  const int width_; //!< Image width
+  const int height_; //!< Image height
+  const int fps_; //!< Video fps
+  AVIOContext *output_context_ptr_; //!< Output context to write into buffer
+  BufferData buffer_data_; //!< Buffer to write data
+  //! Format context to pack data into container
   AVFormatContext *format_context_ptr_;
-  AVPacket *packet_ptr_;
+  AVPacket *packet_ptr_; //!< Packet with compressed data
 };
 
 } // namespace converters

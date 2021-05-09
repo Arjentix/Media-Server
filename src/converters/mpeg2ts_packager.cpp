@@ -37,7 +37,10 @@ const float kOneContainerDurationInSec = 10.0;
 
 namespace converters {
 
-Mpeg2TsPackager::Mpeg2TsPackager():
+Mpeg2TsPackager::Mpeg2TsPackager(const int width, const int height, const int fps):
+width_(width),
+height_(height),
+fps_(fps),
 output_context_ptr_(nullptr),
 buffer_data_(),
 format_context_ptr_(nullptr),
@@ -63,9 +66,8 @@ packet_ptr_(nullptr) {
   AVCodecParameters *params_ptr = video_stream_ptr->codecpar;
   params_ptr->codec_id = AV_CODEC_ID_H264;
   params_ptr->codec_type = AVMEDIA_TYPE_VIDEO;
-  params_ptr->width = 1280; //!< @TODO Get width from server
-  params_ptr->height = 960; //!< @TODO Get height from server
-//  params_ptr->bit_rate = 400'000;
+  params_ptr->width = width_;
+  params_ptr->height = height_;
 
   if (avformat_write_header(format_context_ptr_, NULL) < 0) {
     throw std::runtime_error("Could not write header");
