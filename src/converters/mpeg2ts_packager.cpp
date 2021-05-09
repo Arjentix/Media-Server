@@ -39,19 +39,11 @@ const float kOneContainerDurationInSec = 10.0;
 namespace converters {
 
 Mpeg2TsPackager::Mpeg2TsPackager():
-format_context_ptr_(nullptr),
-buffer_data_(),
 output_context_ptr_(nullptr),
+buffer_data_(),
+format_context_ptr_(nullptr),
 packet_ptr_(nullptr) {
   Byte *output_context_buffer_ptr = reinterpret_cast<Byte *>(av_malloc(kOutputContextBufferSize));
-
-  buffer_data_.buf = reinterpret_cast<uint8_t *>(av_malloc(kBufferDataBufferSize));
-  if (buffer_data_.buf == NULL) {
-    throw std::runtime_error("Can't allocate BufferData buffer");
-  }
-  buffer_data_.ptr = buffer_data_.buf;
-  buffer_data_.room = kBufferDataBufferSize;
-  buffer_data_.size = kBufferDataBufferSize;
 
   output_context_ptr_ = avio_alloc_context(output_context_buffer_ptr, kOutputContextBufferSize, 1, &buffer_data_, NULL, WritePacket, NULL);
   if (output_context_ptr_ == NULL) {
@@ -98,7 +90,6 @@ Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
   avformat_free_context(format_context_ptr_);
   av_freep(&output_context_ptr_->buffer);
   avio_context_free(&output_context_ptr_);
-  av_free(buffer_data_.buf);
 }
 
 void Mpeg2TsPackager::Receive(const Bytes &data) {
@@ -109,6 +100,25 @@ void Mpeg2TsPackager::Receive(const Bytes &data) {
   }
 
   av_packet_unref(packet_ptr_);
+}
+
+Mpeg2TsPackager::BufferData::BufferData():
+buf(nullptr),
+size(0),
+ptr(nullptr),
+room(0) {
+  buf = reinterpret_cast<uint8_t *>(av_malloc(kBufferDataBufferSize));
+  if (buf == NULL) {
+    throw std::runtime_error("Can't allocate BufferData buffer");
+  }
+
+  ptr = buf;
+  room = kBufferDataBufferSize;
+  size = kBufferDataBufferSize;
+}
+
+Mpeg2TsPackager::BufferData::~BufferData() {
+  av_free(buf);
 }
 
 int Mpeg2TsPackager::WritePacket(void *opaque, uint8_t *buf, int buf_size) {
