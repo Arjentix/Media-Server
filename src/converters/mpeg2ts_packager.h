@@ -51,22 +51,12 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
  private:
   class BufferData {
    public:
-    const int kInitBufferSize = 1024;
-
-    BufferData();
-    ~BufferData();
-
-    uint8_t *GetBufferPtr();
-
-    size_t GetBufferSize();
+    [[nodiscard]] const Bytes &GetData() const;
 
     static int WritePacket(void *opaque, uint8_t *buf, int buf_size);
 
    private:
-    uint8_t *buffer_ptr_; //!< Buffer
-    size_t size_; //!< Size of buffer
-    uint8_t *end_ptr_; //!< Pointer to the empty data
-    size_t left_size_; //!< Size left in the buffer
+    Bytes data_;
   };
 
   AVIOContext *output_context_ptr_;

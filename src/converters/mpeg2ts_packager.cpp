@@ -80,7 +80,8 @@ Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
   // Delete next block
   {
     std::ofstream file("video.mpegts", std::ios::out | std::ios::binary);
-    file.write(reinterpret_cast<const char *>(buffer_data_.GetBufferPtr()), buffer_data_.GetBufferSize());
+    const Bytes &data = buffer_data_.GetData();
+    file.write(reinterpret_cast<const char *>(data.data()), data.size());
   }
 
   av_packet_free(&packet_ptr_);
@@ -99,51 +100,17 @@ void Mpeg2TsPackager::Receive(const Bytes &data) {
   av_packet_unref(packet_ptr_);
 }
 
-Mpeg2TsPackager::BufferData::BufferData():
-buffer_ptr_(nullptr),
-size_(0),
-end_ptr_(nullptr),
-left_size_(0) {
-  buffer_ptr_ = reinterpret_cast<uint8_t *>(av_malloc(kInitBufferSize));
-  if (buffer_ptr_ == NULL) {
-    throw std::runtime_error("Can't allocate BufferData buffer");
-  }
-
-  end_ptr_ = buffer_ptr_;
-  left_size_ = kInitBufferSize;
-  size_ = kInitBufferSize;
+const Bytes &Mpeg2TsPackager::BufferData::GetData() const {
+  return data_;
 }
 
-Mpeg2TsPackager::BufferData::~BufferData() {
-  av_free(buffer_ptr_);
-}
+int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf, const int buf_size) {
+  BufferData *buffer_data_ptr = reinterpret_cast<BufferData *>(opaque);
 
-uint8_t *Mpeg2TsPackager::BufferData::GetBufferPtr() {
-  return buffer_ptr_;
-}
+  Bytes &data = buffer_data_ptr->data_;
+  data.insert(data.end(), buf, buf + buf_size);
 
-size_t Mpeg2TsPackager::BufferData::GetBufferSize() {
-  return size_;
-}
-
-int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf, int buffer_ptr_size) {
-  BufferData *bd = reinterpret_cast<BufferData *>(opaque);
-  while (buffer_ptr_size > static_cast<int>(bd->left_size_)) {
-    int64_t offset = bd->end_ptr_ - bd->buffer_ptr_;
-    bd->buffer_ptr_ = reinterpret_cast<uint8_t *>(av_realloc_f(bd->buffer_ptr_, 2, bd->size_));
-    if (!bd->buffer_ptr_) {
-      return AVERROR(ENOMEM);
-    }
-    bd->size_ *= 2;
-    bd->end_ptr_ = bd->buffer_ptr_ + offset;
-    bd->left_size_ = bd->size_ - offset;
-  }
-
-  memcpy(bd->end_ptr_, buf, buffer_ptr_size);
-  bd->end_ptr_ += buffer_ptr_size;
-  bd->left_size_ -= buffer_ptr_size;
-
-  return buffer_ptr_size;
+  return buf_size;
 }
 
 } // namespace converters
