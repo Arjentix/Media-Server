@@ -37,6 +37,7 @@ fps_(fps),
 chunk_duration_(chunk_duration),
 frames_per_chunk_(fps_ * chunk_duration_),
 chunk_frame_counter_(0),
+chunk_counter_(0),
 output_context_ptr_(nullptr),
 buffer_data_(),
 format_context_ptr_(nullptr),
@@ -57,10 +58,10 @@ Mpeg2TsPackager::~Mpeg2TsPackager() noexcept {
   avio_context_free(&output_context_ptr_);
 }
 
-void Mpeg2TsPackager::Receive(const Bytes &data) {
+void Mpeg2TsPackager::Receive(const types::H264Frame &frame) {
   ++chunk_frame_counter_;
 
-  WriteFrame(data);
+  WriteFrame(frame);
 
   if (chunk_frame_counter_ >= static_cast<int>(frames_per_chunk_)) {
     WriteTrailer();
@@ -74,16 +75,21 @@ void Mpeg2TsPackager::Receive(const Bytes &data) {
 //      const std::string filename = "chunk"s + std::to_string(chunk_counter) +
 //                                   ".mpegts";
 //      std::ofstream file(filename, std::ios::out | std::ios::binary);
-//      const Bytes &data_to_write = buffer_data_.GetData();
+//      const types::Bytes &data_to_write = buffer_data_.data;
 //      file.write(reinterpret_cast<const char *>(data_to_write.data()),
 //                 data_to_write.size());
 //      std::cout << "Chunk saved in " << filename << std::endl;
 //    }
 
-    ProvideToAll(buffer_data_.GetData());
+    types::Mpeg2TsChunk chunk;
+    chunk.duration = chunk_frame_counter_ / fps_;
+    chunk.media_sequence_number = chunk_counter_;
+    chunk.data = std::move(buffer_data_.data);
+    ProvideToAll(chunk);
 
-    buffer_data_.Clear();
+    buffer_data_.data.clear();
     chunk_frame_counter_ = 0;
+    ++chunk_counter_;
 
     WriteHeader();
   }
@@ -92,7 +98,7 @@ void Mpeg2TsPackager::Receive(const Bytes &data) {
 void Mpeg2TsPackager::InitOutputContext() {
   const int kOutputContextBufferSize = 4096;
 
-  Byte *output_context_buffer_ptr = reinterpret_cast<Byte *>(
+  types::Byte *output_context_buffer_ptr = reinterpret_cast<types::Byte *>(
       av_malloc(kOutputContextBufferSize));
   output_context_ptr_ = avio_alloc_context(
       output_context_buffer_ptr, kOutputContextBufferSize, 1, &buffer_data_,
@@ -131,9 +137,11 @@ void Mpeg2TsPackager::WriteHeader() {
   }
 }
 
-void Mpeg2TsPackager::WriteFrame(const Bytes &data) {
-  av_packet_ref(packet_ptr_, reinterpret_cast<AVPacket *>(
-      const_cast<Byte *>(data.data())));
+void Mpeg2TsPackager::WriteFrame(const types::H264Frame &frame) {
+  packet_ptr_->pts = frame.pts;
+  packet_ptr_->dts = frame.dts;
+  packet_ptr_->data = const_cast<types::Byte *>(frame.data.data());
+  packet_ptr_->size = frame.data.size();
 
   if (av_interleaved_write_frame(format_context_ptr_, packet_ptr_)) {
     throw std::runtime_error("Can't write packet");
@@ -148,20 +156,11 @@ void Mpeg2TsPackager::WriteTrailer() {
   }
 }
 
-
-const Bytes &Mpeg2TsPackager::BufferData::GetData() const {
-  return data_;
-}
-
-void Mpeg2TsPackager::BufferData::Clear() {
-  data_.clear();
-}
-
 int Mpeg2TsPackager::BufferData::WritePacket(void *opaque, uint8_t *buf,
                                              const int buf_size) {
   BufferData *buffer_data_ptr = reinterpret_cast<BufferData *>(opaque);
 
-  Bytes &data = buffer_data_ptr->data_;
+  types::Bytes &data = buffer_data_ptr->data;
   data.insert(data.end(), buf, buf + buf_size);
 
   return buf_size;

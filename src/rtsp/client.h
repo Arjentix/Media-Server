@@ -29,7 +29,8 @@ SOFTWARE.
 #include <thread>
 #include <mutex>
 
-#include "frame/provider.h"
+#include "provider.h"
+#include "types/mjpeg_frame.h"
 #include "sock/client_socket.h"
 #include "sock/server_socket.h"
 #include "request.h"
@@ -41,7 +42,7 @@ namespace rtsp {
 /**
  * @brief RTSP client, that connects to the RTSP server and provides frames
  */
-class Client : public frame::Provider {
+ class Client : public Provider<types::MjpegFrame> {
  public:
   /**
    * @details Blocks until connection is established

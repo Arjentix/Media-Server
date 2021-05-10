@@ -24,8 +24,17 @@ SOFTWARE.
 
 #pragma once
 
-#include <cstdint>
-#include <vector>
+#include "types/byte.h"
 
-using Byte = uint8_t;
-using Bytes = std::vector<Byte>;
+/**
+ * @brief Observer class, that can receive data from Providers
+ *
+ * @tparam Data Type of data to receive
+ */
+template <typename Data>
+class Observer {
+ public:
+  virtual ~Observer() = default;
+
+  virtual void Receive(const Data &data) = 0;
+};

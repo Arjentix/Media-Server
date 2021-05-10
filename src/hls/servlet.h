@@ -36,7 +36,8 @@ extern "C" {
 #include "servlet.h"
 #include "http/request.h"
 #include "http/response.h"
-#include "frame/observer.h"
+#include "observer.h"
+#include "types/mpeg2ts_chunk.h"
 
 namespace hls {
 
@@ -46,7 +47,7 @@ const std::regex kChunkPathRegex("^/chunk(\\d+)\\.ts$");
 const http::Response NotFoundResponse = {404, "Not Found"};
 
 class Servlet : public ::Servlet<http::Request, http::Response>,
-                public frame::Observer {
+                public Observer<types::Mpeg2TsChunk> {
  public:
   /**
    * @param chunk_count Number of chunk to store in memory
@@ -68,27 +69,19 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
   /**
    * @param data MPEG2-TS data represented in bytes
    */
-  void Receive(const Bytes &data) override {
-    Chunk &last_chunk = chunks_.back();
-    const uint64_t last_chunk_number = last_chunk.media_sequence_number;
-
+  void Receive(const types::Mpeg2TsChunk &chunk) override {
     for (std::size_t i = 0; i < chunks_.size() - 1; ++i) {
       chunks_[i] = std::move(chunks_[i + 1]);
     }
 
-    last_chunk.media_sequence_number = last_chunk_number + 1;
-    last_chunk.duration = 0; //!< @TODO Normal duration extracting
-    last_chunk.data = data;
+    chunks_.back() = chunk;
+    if (chunk.media_sequence_number == chunks_.size() - 1) {
+      std::cout << "HLS: All chunks are cached" << std::endl;
+    }
   }
 
  private:
-   struct Chunk {
-    uint64_t media_sequence_number = 0;
-    int duration = 0;
-    Bytes data;
-  };
-
-  std::vector<Chunk> chunks_;
+  std::vector<types::Mpeg2TsChunk> chunks_;
   const float chunk_duration_;
 
   [[nodiscard]] http::Response HandleGet(const http::Request &request) const {
@@ -113,7 +106,7 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
     const uint64_t chunk_number = ExtractChunkNumberFromUrl(request.url);
 
     auto it = std::find_if(chunks_.begin(), chunks_.end(),
-                           [chunk_number] (const Chunk &chunk) {
+                           [chunk_number] (const types::Mpeg2TsChunk &chunk) {
                              return chunk.media_sequence_number == chunk_number;
                            });
     if (it == chunks_.end()) {

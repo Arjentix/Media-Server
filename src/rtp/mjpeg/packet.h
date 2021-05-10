@@ -50,7 +50,7 @@ struct Header {
     uint8_t mbz; //!< MBZ
     uint8_t precision; //!< Precision
     uint16_t length; //!< The length of data in bytes. Equals to data.size()
-    Bytes data; //!< Quantization table data
+    types::Bytes data; //!< Quantization table data
   } quantization_table_header;
 };
 
@@ -59,9 +59,9 @@ struct Header {
  */
 struct Packet : public Deserializable {
   Header header;
-  Bytes payload;
+  types::Bytes payload;
 
-  void Deserialize(const Bytes &bytes) override;
+  void Deserialize(const types::Bytes &bytes) override;
 };
 
 /**
@@ -70,6 +70,6 @@ struct Packet : public Deserializable {
  * @param packets MJPEG packets with full image
  * @return Bytes representing JPEG image
  */
-Bytes UnpackJpeg(const std::vector<Packet> &packets);
+types::Bytes UnpackJpeg(const std::vector<Packet> &packets);
 
 } // namespace rtp::mjpeg

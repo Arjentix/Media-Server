@@ -24,8 +24,10 @@ SOFTWARE.
 
 #pragma once
 
-#include "frame/observer.h"
-#include "frame/provider.h"
+#include "observer.h"
+#include "provider.h"
+#include "types/h264_frame.h"
+#include "types/mpeg2ts_chunk.h"
 
 extern "C" {
 #include <libavformat/avformat.h>
@@ -38,7 +40,8 @@ namespace converters {
  * @detals It provides data to it's observes then chunk is ready
  * @note In fact it should also pack audio, but it is not supported right now
  */
-class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
+ class Mpeg2TsPackager : public Observer<types::H264Frame>,
+                         public Provider<types::Mpeg2TsChunk> {
  public:
   /**
    * @param width Image width
@@ -53,7 +56,7 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   Mpeg2TsPackager(const Mpeg2TsPackager &) = delete;
   Mpeg2TsPackager &operator=(const Mpeg2TsPackager &) = delete;
 
-  void Receive(const Bytes &data) override;
+  void Receive(const types::H264Frame &frame) override;
 
  private:
   /**
@@ -61,18 +64,6 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
    */
   class BufferData {
    public:
-    /**
-     * @brief Get saved data
-     *
-     * @return Data
-     */
-    [[nodiscard]] const Bytes &GetData() const;
-
-    /**
-     * @brief Clear buffer
-     */
-    void Clear();
-
     /**
      * @brief Write data from buf to opaque
      * @details Function for ffmpeg avio_alloc_context() API
@@ -82,10 +73,9 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
      * @param buf_size Size of data
      * @return Size of writen data
      */
-    static int WritePacket(void *opaque, Byte *buf, int buf_size);
+    static int WritePacket(void *opaque, types::Byte *buf, int buf_size);
 
-   private:
-    Bytes data_;
+    types::Bytes data;
   };
 
   const int width_; //!< Image width
@@ -94,6 +84,7 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   const int chunk_duration_; //!< Chunk max duration
   const float frames_per_chunk_; //!< Number of frames per chunk
   int chunk_frame_counter_; //!< Number of frames for current chunk
+  uint64_t chunk_counter_; //!< Number of packed chunks
   AVIOContext *output_context_ptr_; //!< Output context to write into buffer
   BufferData buffer_data_; //!< Buffer to write data
   //! Format context to pack data into container
@@ -123,9 +114,9 @@ class Mpeg2TsPackager : public frame::Observer, public frame::Provider {
   /**
    * @brief Write frame to buffer
    *
-   * @param data Encoded frame (packet) represented in bytes
+   * @param frame H.264 encoded frame
    */
-  void WriteFrame(const Bytes &data);
+  void WriteFrame(const types::H264Frame &frame);
 
   /**
    * @brief Write container trailer

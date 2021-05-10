@@ -24,15 +24,12 @@ SOFTWARE.
 
 #pragma once
 
-#include "byte.h"
+#include <cstdint>
+#include <vector>
 
-namespace frame {
+namespace types {
 
-class Observer {
- public:
-  virtual ~Observer() = default;
+using Byte = uint8_t;
+using Bytes = std::vector<Byte>;
 
-  virtual void Receive(const Bytes &data) = 0;
-};
-
-} // namespace frame
+} // namespace types

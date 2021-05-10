@@ -204,8 +204,8 @@ void Client::RtpDataReceiving() {
     mjpeg_packet.Deserialize(rtp_packet.payload);
     mjpeg_packets.push_back(std::move(mjpeg_packet));
     if (rtp_packet.header.marker == 1U) {
-      Bytes frame = rtp::mjpeg::UnpackJpeg(mjpeg_packets);
-      ProvideToAll(frame);
+      types::Bytes frame = rtp::mjpeg::UnpackJpeg(mjpeg_packets);
+      ProvideToAll(types::MjpegFrame(frame));
       mjpeg_packets.clear();
     }
   }

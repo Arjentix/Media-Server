@@ -29,7 +29,7 @@ SOFTWARE.
 #include <sstream>
 #include <ostream>
 
-#include "byte.h"
+#include "types/byte.h"
 
 namespace sock {
 
@@ -107,7 +107,7 @@ class Socket {
    * @param ip Destination ip
    * @param ip Destination port
    */
-  void SendTo(const Bytes &bytes, const std::string &ip, int port);
+  void SendTo(const types::Bytes &bytes, const std::string &ip, int port);
 
   Socket &operator=(Socket &&other);
 

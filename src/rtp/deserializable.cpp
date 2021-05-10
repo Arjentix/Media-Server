@@ -27,7 +27,7 @@ SOFTWARE.
 #include <string>
 #include <stdexcept>
 
-void ValidateBytesSize(const Bytes &bytes, const std::size_t expected_size) {
+void ValidateBytesSize(const types::Bytes &bytes, const std::size_t expected_size) {
   using namespace std::string_literals;
 
   if (bytes.size() < expected_size) {
@@ -36,19 +36,19 @@ void ValidateBytesSize(const Bytes &bytes, const std::size_t expected_size) {
   }
 }
 
-uint16_t Deserialize16(const Bytes &bytes) {
+uint16_t Deserialize16(const types::Bytes &bytes) {
   ValidateBytesSize(bytes, 2);
 
   return ((uint16_t(bytes[0]) << 8) | uint16_t(bytes[1]));
 }
 
-uint32_t Deserialize24(const Bytes &bytes) {
+uint32_t Deserialize24(const types::Bytes &bytes) {
   ValidateBytesSize(bytes, 3);
 
   return ((uint32_t(bytes[0]) << 16) | (uint32_t(bytes[1] << 8)) | uint32_t(bytes[2]));
 }
 
-uint32_t Deserialize32(const Bytes &bytes) {
+uint32_t Deserialize32(const types::Bytes &bytes) {
   ValidateBytesSize(bytes, 4);
 
   return ((uint32_t(bytes[0]) << 24) | (uint32_t(bytes[1]) << 16) |

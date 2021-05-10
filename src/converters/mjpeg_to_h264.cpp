@@ -30,6 +30,8 @@ extern "C" {
 #include <libavutil/imgutils.h>
 }
 
+#include <algorithm>
+
 namespace {
 
 const uint32_t kH264SampleRate = 90'000;
@@ -118,9 +120,9 @@ MjpegToH264::~MjpegToH264() noexcept {
   av_packet_free(&dst_packet_ptr_);
 }
 
-void MjpegToH264::Receive(const Bytes &data) {
-  src_packet_ptr_->data = const_cast<Byte *>(data.data());
-  src_packet_ptr_->size = data.size();
+void MjpegToH264::Receive(const types::MjpegFrame &frame) {
+  src_packet_ptr_->data = const_cast<types::Byte *>(frame.data.data());
+  src_packet_ptr_->size = frame.data.size();
 
   int res = avcodec_send_packet(dec_context_ptr_, src_packet_ptr_);
   if (res < 0) {
@@ -162,9 +164,14 @@ void MjpegToH264::EncodeToH264() {
       throw std::runtime_error("Error during encoding");
     }
 
-//    ProvideToAll({dst_packet_ptr_->data, dst_packet_ptr_->data + dst_packet_ptr_->size});
-    ProvideToAll({reinterpret_cast<Byte *>(dst_packet_ptr_),
-                  reinterpret_cast<Byte *>(dst_packet_ptr_) + sizeof(*dst_packet_ptr_)});
+    types::H264Frame h264_frame;
+    h264_frame.pts = dst_packet_ptr_->pts;
+    h264_frame.dts = dst_packet_ptr_->dts;
+    h264_frame.data.reserve(dst_packet_ptr_->size);
+    std::move(dst_packet_ptr_->data,
+              dst_packet_ptr_->data + dst_packet_ptr_->size,
+              std::back_inserter(h264_frame.data));
+    ProvideToAll(h264_frame);
     av_packet_unref(dst_packet_ptr_);
   }
 }

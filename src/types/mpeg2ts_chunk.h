@@ -22,20 +22,20 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
 
-#include "provider.h"
+#pragma once
 
-#include "observer.h"
+#include "byte.h"
 
-namespace frame {
+namespace types {
 
-void Provider::AddObserver(std::shared_ptr<Observer> observer_ptr) {
-  observers_.push_back(observer_ptr);
-}
+/**
+ * @brief Struct representing MPEG2-TS container chunk to use with Observer and
+ * Provider classes
+ */
+struct Mpeg2TsChunk {
+  uint64_t media_sequence_number = 0;
+  float duration = 0;
+  Bytes data;
+};
 
-void Provider::ProvideToAll(const Bytes &frame) {
-  for (auto observer_ptr : observers_) {
-    observer_ptr->Receive(frame);
-  }
-}
-
-} // namespace frame
+} // namespace types

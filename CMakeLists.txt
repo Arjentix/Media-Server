@@ -9,7 +9,6 @@ set(SOURCES
     ${SRC_DIR}/main.cpp
     ${SRC_DIR}/split.cpp
     ${SRC_DIR}/port_handler/port_handler_manager.cpp
-    ${SRC_DIR}/frame/provider.cpp
     ${SRC_DIR}/sock/exception.cpp
     ${SRC_DIR}/sock/socket.cpp
     ${SRC_DIR}/sock/server_socket.cpp

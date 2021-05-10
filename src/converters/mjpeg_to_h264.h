@@ -24,8 +24,10 @@ SOFTWARE.
 
 #pragma once
 
-#include "frame/observer.h"
-#include "frame/provider.h"
+#include "observer.h"
+#include "provider.h"
+#include "types/mjpeg_frame.h"
+#include "types/h264_frame.h"
 
 extern "C" {
 #include <libavcodec/avcodec.h>
@@ -39,7 +41,8 @@ namespace converters {
 /**
  * @brief Converts MJPEG-encoded video to H264-encoded
  */
- class MjpegToH264 : public frame::Observer, public frame::Provider {
+ class MjpegToH264 : public Observer<types::MjpegFrame>,
+                     public Provider<types::H264Frame> {
   public:
     /**
      * @param width Image width
@@ -53,7 +56,7 @@ namespace converters {
     MjpegToH264(const MjpegToH264 &) = delete;
     MjpegToH264 &operator=(const MjpegToH264 &) = delete;
 
-    void Receive(const Bytes &data) override;
+    void Receive(const types::MjpegFrame &frame) override;
 
   private:
    const int width_;

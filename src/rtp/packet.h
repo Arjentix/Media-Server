@@ -57,7 +57,7 @@ struct Header {
   struct {
     uint16_t id; //!< The id of extension header. Defined by a profile
     uint16_t length; //!< Length of the extension header. Equals to content.size()
-    Bytes content; //!< The actual header represented in bytes
+    types::Bytes content; //!< The actual header represented in bytes
   } extension_header; //!< Extension header. Used then extension bit is set
 };
 
@@ -66,9 +66,9 @@ struct Header {
  */
 struct Packet : public Deserializable {
   Header header;
-  Bytes payload;
+  types::Bytes payload;
 
-  void Deserialize(const Bytes &bytes) override;
+  void Deserialize(const types::Bytes &bytes) override;
 };
 
 sock::Socket &operator>>(sock::Socket &socket, Packet &packet);

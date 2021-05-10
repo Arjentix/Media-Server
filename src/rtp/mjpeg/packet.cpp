@@ -66,7 +66,7 @@ const int kJpegChromaQuantizer[kQuantizationTableSize] = {
  * @param lqt Luma quantization table
  * @param cqt Chroma quantization table
  */
-void WriteTables(int q, Bytes &lqt, Bytes &cqt) {
+void WriteTables(int q, types::Bytes &lqt, types::Bytes &cqt) {
   int i;
   int factor = std::clamp(q, 1, 99);
   if (q < 50) {
@@ -86,19 +86,19 @@ void WriteTables(int q, Bytes &lqt, Bytes &cqt) {
   }
 }
 
-const Bytes kLumDcCodelens = {
+const types::Bytes kLumDcCodelens = {
     0, 1, 5, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0
 };
 
-const Bytes kLumDcSymbols = {
+const types::Bytes kLumDcSymbols = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 };
 
-const Bytes kLumAcCodelens = {
+const types::Bytes kLumAcCodelens = {
     0, 2, 1, 3, 3, 2, 4, 3, 5, 5, 4, 4, 0, 0, 1, 0x7d
 };
 
-const Bytes kLumAcSymbols = {
+const types::Bytes kLumAcSymbols = {
     0x01, 0x02, 0x03, 0x00, 0x04, 0x11, 0x05, 0x12,
     0x21, 0x31, 0x41, 0x06, 0x13, 0x51, 0x61, 0x07,
     0x22, 0x71, 0x14, 0x32, 0x81, 0x91, 0xa1, 0x08,
@@ -122,19 +122,19 @@ const Bytes kLumAcSymbols = {
     0xf9, 0xfa
 };
 
-const Bytes kChmDcCodelens = {
+const types::Bytes kChmDcCodelens = {
     0, 3, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0
 };
 
-const Bytes kChmDcSymbols = {
+const types::Bytes kChmDcSymbols = {
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11
 };
 
-const Bytes kChmAcCodelens = {
+const types::Bytes kChmAcCodelens = {
     0, 2, 1, 2, 4, 4, 3, 4, 7, 5, 4, 4, 0, 1, 2, 0x77
 };
 
-const Bytes kChmAcSymbols = {
+const types::Bytes kChmAcSymbols = {
     0x00, 0x01, 0x02, 0x03, 0x11, 0x04, 0x05, 0x21,
     0x31, 0x06, 0x12, 0x41, 0x51, 0x07, 0x61, 0x71,
     0x13, 0x22, 0x32, 0x81, 0x08, 0x14, 0x42, 0x91,
@@ -166,7 +166,7 @@ const Bytes kChmAcSymbols = {
  * @param qt Quantization table
  * @param tableNo Number of quantization table
  */
-void WriteQuantHeader(Bytes &dest, const Bytes &qt, const int tableNo) {
+void WriteQuantHeader(types::Bytes &dest, const types::Bytes &qt, const int tableNo) {
   dest.push_back(0xff);
   dest.push_back(0xdb);
   dest.push_back(0);
@@ -185,7 +185,7 @@ void WriteQuantHeader(Bytes &dest, const Bytes &qt, const int tableNo) {
  * @param tableNo Number of Huffman table
  * @param tableClass Class of Huffman table
  */
-void WriteHuffmanHeader(Bytes &dest, const Bytes &codelens, const Bytes &symbols, const int tableNo, const int tableClass) {
+void WriteHuffmanHeader(types::Bytes &dest, const types::Bytes &codelens, const types::Bytes &symbols, const int tableNo, const int tableClass) {
   dest.push_back(0xff);
   dest.push_back(0xc4);
   dest.push_back(0);
@@ -202,7 +202,7 @@ void WriteHuffmanHeader(Bytes &dest, const Bytes &codelens, const Bytes &symbols
  * @param dest JPEG header to write into
  * @param dri DRI parameter
  */
-void WriteDriHeader(Bytes &dest, const u_short dri) {
+void WriteDriHeader(types::Bytes &dest, const u_short dri) {
   dest.push_back(0xff);
   dest.push_back(0xdd);
   dest.push_back(0x0);
@@ -223,8 +223,8 @@ void WriteDriHeader(Bytes &dest, const u_short dri) {
  * @param dri DRI parameter
  * @return JPEG headers
  */
-Bytes BuildHeaders(const int type, int w, int h, const Bytes &lqt, const Bytes &cqt, const u_short dri) {
-  Bytes headers;
+types::Bytes BuildHeaders(const int type, int w, int h, const types::Bytes &lqt, const types::Bytes &cqt, const u_short dri) {
+  types::Bytes headers;
 
   w <<= 3;
   h <<= 3;
@@ -289,7 +289,7 @@ Bytes BuildHeaders(const int type, int w, int h, const Bytes &lqt, const Bytes &
 
 namespace rtp::mjpeg {
 
-void Packet::Deserialize(const Bytes &bytes) {
+void Packet::Deserialize(const types::Bytes &bytes) {
   ValidateBytesSize(bytes, 8);
 
   header.type_specific = bytes[0];
@@ -317,13 +317,13 @@ void Packet::Deserialize(const Bytes &bytes) {
   payload.insert(payload.end(), payload_begin_it, bytes.end());
 }
 
-Bytes UnpackJpeg(const std::vector<Packet> &packets) {
-  Bytes luma_quantization_table(kQuantizationTableSize);
-  Bytes chroma_quantization_table(kQuantizationTableSize);
+types::Bytes UnpackJpeg(const std::vector<Packet> &packets) {
+  types::Bytes luma_quantization_table(kQuantizationTableSize);
+  types::Bytes chroma_quantization_table(kQuantizationTableSize);
 
   const uint8_t quality = packets[0].header.quality;
   if (quality > 127) {
-   const Bytes &data = packets[0].header.quantization_table_header.data;
+   const types::Bytes &data = packets[0].header.quantization_table_header.data;
    luma_quantization_table.insert(luma_quantization_table.end(), data.begin(),
                                   data.begin() + kQuantizationTableSize);
    chroma_quantization_table.insert(chroma_quantization_table.end(),
@@ -335,7 +335,7 @@ Bytes UnpackJpeg(const std::vector<Packet> &packets) {
 
   const Header &header = packets[0].header;
   const int kDri = 0;
-  Bytes jpeg_image = BuildHeaders(header.type, header.width, header.height, luma_quantization_table, chroma_quantization_table, kDri);
+  types::Bytes jpeg_image = BuildHeaders(header.type, header.width, header.height, luma_quantization_table, chroma_quantization_table, kDri);
   for (auto it = packets.begin(); it != packets.end(); ++it) {
     jpeg_image.insert(jpeg_image.end(), it->payload.begin(), it->payload.end());
   }

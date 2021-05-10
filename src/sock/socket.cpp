@@ -126,7 +126,7 @@ void Socket::Send(std::string_view str) {
   }
 }
 
-void Socket::SendTo(const Bytes &bytes, const std::string &ip, int port) {
+void Socket::SendTo(const types::Bytes &bytes, const std::string &ip, int port) {
   sockaddr_in their_addr;
   their_addr.sin_family = AF_INET;
   their_addr.sin_port = htons(port);

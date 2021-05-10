@@ -24,31 +24,19 @@ SOFTWARE.
 
 #pragma once
 
-#include "types/byte.h"
+#include "byte.h"
+
+namespace types {
 
 /**
- * @brief Interface class for object that can be deserialized from bytes
+ * @brief Wrapper for Bytes. Needs to use with Observer and Provider classes
  */
-class Deserializable {
- public:
-  virtual void Deserialize(const types::Bytes &bytes) = 0;
+struct MjpegFrame {
+  explicit MjpegFrame(Bytes data) :
+  data(std::move(data)) {
+  }
+
+  Bytes data;
 };
 
-/**
- * @brief Check if bytes contains at least expected_size bytes
- * @throw std::invalid_argument, if bytes.size() < expected_size
- *
- * @param bytes Collection of bytes
- * @param expected_size Expected size of bytes collection
- */
-void ValidateBytesSize(const types::Bytes &bytes, std::size_t expected_size);
-
-/**
- * @brief Deserialize integer from bytes
- *
- * @param bytes Bytes to deserialize integers from
- * @return Deserialized integer
- */
-uint16_t Deserialize16(const types::Bytes &bytes);
-uint32_t Deserialize24(const types::Bytes &bytes);
-uint32_t Deserialize32(const types::Bytes &bytes);
+} // namespace types

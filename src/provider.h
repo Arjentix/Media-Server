@@ -29,30 +29,38 @@ SOFTWARE.
 
 #include "observer.h"
 
-namespace frame {
 /**
- * @brief  Provider class, that can provide new frames to observers
+ * @brief  Provider class, that can provide data to its observers
+ *
+ * @tparam Data Type of data to be provided
  */
+template <typename Data>
 class Provider {
  public:
+  using SameDataObserver = Observer<Data>;
+
   virtual ~Provider() = default;
 
   /**
    * @brief Add new observer
    * @param observer_ptr Pointer to observer to be added
    */
-  void AddObserver(std::shared_ptr<Observer> observer_ptr);
+  void AddObserver(std::shared_ptr<SameDataObserver> observer_ptr) {
+    observers_.push_back(observer_ptr);
+  }
 
  protected:
   /**
    * @brief Notify all observers
-   * @param frame Data to send to observers
+   * @param data Data to send to observers
    */
-  void ProvideToAll(const Bytes &frame);
+  void ProvideToAll(const Data &data) {
+    for (auto observer_ptr : observers_) {
+      observer_ptr->Receive(data);
+    }
+  }
 
  private:
   //! Vector of all observers
-  std::vector<std::shared_ptr<Observer>> observers_;
+  std::vector<std::shared_ptr<SameDataObserver>> observers_;
 };
-
-} // namespace frame
