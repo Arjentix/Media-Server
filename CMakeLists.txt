@@ -15,18 +15,17 @@ set(SOURCES
     ${SRC_DIR}/sock/socket.cpp
     ${SRC_DIR}/sock/server_socket.cpp
     ${SRC_DIR}/sock/client_socket.cpp
+    ${SRC_DIR}/http/base_request.cpp
+    ${SRC_DIR}/http/request.cpp
+    ${SRC_DIR}/http/response.cpp
     ${SRC_DIR}/rtsp/client.cpp
     ${SRC_DIR}/rtsp/request.cpp
-    ${SRC_DIR}/rtsp/response.cpp
     ${SRC_DIR}/sdp/session_description.cpp
     ${SRC_DIR}/rtp/deserializable.cpp
     ${SRC_DIR}/rtp/packet.cpp
     ${SRC_DIR}/rtp/mjpeg/packet.cpp
     ${SRC_DIR}/converters/mjpeg_to_h264.cpp
     ${SRC_DIR}/converters/mpeg2ts_packager.cpp
-    ${SRC_DIR}/http/base_request.cpp
-    ${SRC_DIR}/http/request.cpp
-    ${SRC_DIR}/http/response.cpp
 )
 
 

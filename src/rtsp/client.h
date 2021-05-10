@@ -32,6 +32,7 @@ SOFTWARE.
 #include "frame/provider.h"
 #include "sock/client_socket.h"
 #include "sock/server_socket.h"
+#include "request.h"
 #include "response.h"
 #include "sdp/session_description.h"
 

@@ -24,42 +24,10 @@ SOFTWARE.
 
 #pragma once
 
-#include <string>
-#include <unordered_map>
-#include <ostream>
-
-#include "request.h"
+#include "http/response.h"
 
 namespace rtsp {
 
-/**
- * @brief Exception, indicating that an error occurred during request parsing
- */
-class ParseError : public std::runtime_error {
- public:
-  explicit ParseError(std::string_view message);
-};
-
-/**
- * @brief Response from Server to Client
- */
-struct Response {
-  using Headers = http::Headers;
-
-  Response();
-
-  Response(int code, std::string description,
-           Headers headers = Headers(), std::string body = "");
-
-  float version;
-  int code;
-  std::string description;
-  Headers headers;
-  std::string body;
-};
-
-std::ostream &operator<<(std::ostream &os, const Response &response);
-
-sock::Socket &operator>>(sock::Socket &socket, Response &response);
+using Response = http::Response;
 
 } // namespace rtsp
