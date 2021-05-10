@@ -99,7 +99,7 @@ class PortHandler : public PortHandlerBase {
 
         ResponseType response = request_dispatcher_.Dispatch(request);
         (*client_socket_ptr) << response << std::endl;
-        if (response.body.size() > 100) {
+        if (response.body.size() > 200) {
           response.body = "[Body skipped]";
         }
         std::cout << "\n" << response << "\n" << std::endl;
