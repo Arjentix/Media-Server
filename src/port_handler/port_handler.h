@@ -98,8 +98,11 @@ class PortHandler : public PortHandlerBase {
         std::cout << "\n" << request << "\n" << std::endl;
 
         ResponseType response = request_dispatcher_.Dispatch(request);
-        std::cout << "\n" << response << "\n" << std::endl;
         (*client_socket_ptr) << response << std::endl;
+        if (response.body.size() > 100) {
+          response.body = "[Body skipped]";
+        }
+        std::cout << "\n" << response << "\n" << std::endl;
       }
     } catch (const sock::ReadError &) {
       std::cout << "Client on socket " << client_socket_ptr->GetDescriptor()
