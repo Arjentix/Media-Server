@@ -27,7 +27,6 @@ SOFTWARE.
 #include <iostream>
 #include <memory>
 
-#include "frame/provider_manager.h"
 #include "port_handler/port_handler.h"
 #include "port_handler/port_handler_manager.h"
 #include "rtsp/client.h"
@@ -37,86 +36,70 @@ SOFTWARE.
 
 namespace {
 
-const float kHlsChunkDurationSec = 8.0;
-
 volatile bool stop_flag = false;
 
 void SignalHandler(int) {
   stop_flag = true;
 }
 
-/**
- * @brief Create frame provider manager with some registered providers
- *
- * @return Frame provider manager with registered providers
- */
-frame::ProviderManager BuildFrameProviderManager() {
-  using namespace std::string_literals;
+class MediaServer {
+ public:
+  MediaServer():
+  rtsp_client_(kRtspSourceIp, kRtspSourcePort, kRtspSourceUrl),
+  mjpeg_to_h264_ptr_(),
+  mpeg2ts_packager_ptr_(),
+  port_handler_manager_() {
+    const int width = rtsp_client_.GetWidth();
+    const int height = rtsp_client_.GetHeight();
+    const int fps = rtsp_client_.GetFps();
 
-  frame::ProviderManager frame_provider_manager;
+    mjpeg_to_h264_ptr_ = std::make_shared<converters::MjpegToH264>(width, height, fps);
+    mpeg2ts_packager_ptr_ = std::make_shared<converters::Mpeg2TsPackager>(width, height, fps, kHlsChunkDurationSec);
+    rtsp_client_.AddObserver(mjpeg_to_h264_ptr_);
+    mjpeg_to_h264_ptr_->AddObserver(mpeg2ts_packager_ptr_);
 
-  const std::string kRtspSourceIp = "192.168.0.16";
-  const int kRtspSourcePort = 5544;
-  const std::string kRtspSourceUrl = "rtsp://"s + kRtspSourceIp + ":" +
-      std::to_string(kRtspSourcePort) + "/jpeg";
-  auto rtsp_client_ptr = std::make_shared<rtsp::Client>(
-      kRtspSourceIp, kRtspSourcePort, kRtspSourceUrl);
+    port_handler_manager_.RegisterPortHandler(BuildHlsPortHandler());
+  }
 
-  const int width = rtsp_client_ptr->GetWidth();
-  const int height = rtsp_client_ptr->GetHeight();
-  const int fps = rtsp_client_ptr->GetFps();
+  void Start() {
+    std::cout << "Media server started" << std::endl;
 
-  auto h264_converter_ptr = std::make_shared<converters::MjpegToH264>(
-      width, height, fps);
-  rtsp_client_ptr->AddObserver(h264_converter_ptr);
+    const int kAcceptTimeoutInMilliseconds = 2000;
+    while (!stop_flag) {
+      port_handler_manager_.TryAcceptClients(kAcceptTimeoutInMilliseconds);
+    }
+  }
 
-  auto mpeg2ts_packager_ptr = std::make_shared<converters::Mpeg2TsPackager>(
-      width, height, fps, kHlsChunkDurationSec);
-  h264_converter_ptr->AddObserver(mpeg2ts_packager_ptr);
+ private:
+  static constexpr char kRtspSourceIp[] = "192.168.0.16";
+  static constexpr int kRtspSourcePort = 5544;
+  static constexpr char kRtspSourceUrl[] = "rtsp://192.168.0.16:5544/jpeg";
+  static constexpr int kHlsPort = 8080;
+  static constexpr int kHlsChunkCount = 3;
+  static constexpr float kHlsChunkDurationSec = 8.0;
 
-  frame_provider_manager.Register("source1", "MJPEG", rtsp_client_ptr)
-                        .Register("source1", "H.264", h264_converter_ptr)
-                        .Register("source1", "MPEG2-TS", mpeg2ts_packager_ptr);
-  return frame_provider_manager;
-}
+  rtsp::Client rtsp_client_;
+  std::shared_ptr<converters::MjpegToH264> mjpeg_to_h264_ptr_;
+  std::shared_ptr<converters::Mpeg2TsPackager> mpeg2ts_packager_ptr_;
+  port_handler::PortHandlerManager port_handler_manager_;
 
-/**
- * @brief Create HLS handler on port 2020, that takes frames of source identified by source_id
- *
- * @param source_id Id of video source for GlobalFrameProvidersManager
- * @return Pointer to PortHandlerBase with HLS port handler inside
- */
-std::unique_ptr<port_handler::PortHandlerBase> BuildHlsPortHandler(
-    const frame::ProviderManager &frame_provider_manager,
-    const std::string &source_id) {
-  const int kHlsPort = 8080;
-  auto hls_port_handler_ptr = std::make_unique<
-      port_handler::PortHandler<http::Request, http::Response>>(kHlsPort);
+  /**
+   * @brief Create HLS handler
+   *
+   * @return Pointer to PortHandlerBase with HLS port handler inside
+   */
+  std::unique_ptr<port_handler::PortHandlerBase> BuildHlsPortHandler() {
+    auto hls_port_handler_ptr = std::make_unique<
+        port_handler::PortHandler<http::Request, http::Response>>(kHlsPort);
 
-  const int kChunkCount = 3;
-  auto servlet_ptr = std::make_shared<hls::Servlet>(kChunkCount, kHlsChunkDurationSec);
+    auto servlet_ptr = std::make_shared<hls::Servlet>(kHlsChunkCount, kHlsChunkDurationSec);
+    mpeg2ts_packager_ptr_->AddObserver(servlet_ptr);
 
-  frame_provider_manager.GetProvider(source_id, "MPEG2-TS")->AddObserver(servlet_ptr);
+    hls_port_handler_ptr->RegisterServlet("/", servlet_ptr);
 
-  hls_port_handler_ptr->RegisterServlet("/", servlet_ptr);
-
-  return hls_port_handler_ptr;
-}
-
-/**
- * @brief Create manager and register all port handlers
- *
- * @return PortHandlerManager with all handlers registered
- */
-port_handler::PortHandlerManager BuildPortHandlerManager(
-    const frame::ProviderManager &frame_provider_manager) {
-  port_handler::PortHandlerManager port_handler_manager;
-
-  port_handler_manager.RegisterPortHandler(
-      BuildHlsPortHandler(frame_provider_manager, "source1"));
-
-  return port_handler_manager;
-}
+    return hls_port_handler_ptr;
+  }
+};
 
 } // namespace
 
@@ -124,14 +107,8 @@ int main() {
   try {
     signal(SIGINT, SignalHandler);
 
-    frame::ProviderManager frame_provider_manager = BuildFrameProviderManager();
-    port_handler::PortHandlerManager port_handler_manager =
-        BuildPortHandlerManager(frame_provider_manager);
-
-    const int kAcceptTimeoutInMilliseconds = 2000;
-    while (!stop_flag) {
-      port_handler_manager.TryAcceptClients(kAcceptTimeoutInMilliseconds);
-    }
+    MediaServer media_server;
+    media_server.Start();
   } catch (const std::exception &ex) {
     std::cerr << "Error: " << ex.what() << std::endl;
     return EXIT_FAILURE;
