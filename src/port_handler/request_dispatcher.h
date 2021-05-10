@@ -77,7 +77,7 @@ class RequestDispatcher {
     try {
       auto [path, servlet_ptr] = *ChooseServlet(request.url);
       request.url = ExtractPath(request.url).substr(path.size());
-      return servlet_ptr.Handle(request);
+      return servlet_ptr->Handle(request);
     }
     catch (const BadUrl &ex) {
       return {400, "Bad Request"};
