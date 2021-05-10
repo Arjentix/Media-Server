@@ -44,7 +44,7 @@ class ParseError : public std::runtime_error {
  * @brief Response from Server to Client
  */
 struct Response {
-  using Headers = Request::Headers;
+  using Headers = http::Headers;
 
   Response();
 

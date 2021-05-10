@@ -294,7 +294,7 @@ void Client::VerifyAcceptableMethods(
       {Method::kDescribe, Method::kSetup, Method::kPlay, Method::kTeardown};
 
   for (auto method : kRequiredMethods) {
-    const std::string method_str = MethodToString(method);
+    const std::string method_str = http::MethodToString(method);
     auto it = std::find(acceptable_methods_strings.begin(),
                         acceptable_methods_strings.end(),
                         method_str);

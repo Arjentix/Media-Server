@@ -24,17 +24,12 @@ SOFTWARE.
 
 #pragma once
 
-#include <string>
-#include <unordered_map>
-#include <stdexcept>
-#include <ostream>
-
-#include "sock/socket.h"
+#include "http/base_request.h"
 
 namespace rtsp {
 
 /**
- * @brief All possible Client -> Server methods
+ * @brief All possible Client -> Server RTSP methods
  */
 enum class Method {
   kDescribe,
@@ -49,44 +44,9 @@ enum class Method {
   kTeardown
 };
 
-/**
- * @brief Converts method to string
- *
- * @param method Method to be converted
- * @return str with method name
- */
-std::string MethodToString(Method method);
-
-/**
- * @brief Specific hasher for header names to provide case-insensitivity
- */
-struct HeaderNameHash {
-  std::size_t operator()(std::string header_name) const;
-};
-
-/**
- * @brief Specific equal for header names to provide case-insensitivity
- */
-struct HeaderNameEqual {
-  bool operator()(std::string lhs, std::string rhs) const;
-};
-
-/**
- * @brief Request from Client to Server
- */
-struct Request {
-  using Headers = std::unordered_map<std::string, std::string,
-                                     HeaderNameHash, HeaderNameEqual>;
-
-  Method method;
-  std::string url;
-  float version;
-  Headers headers;
-  std::string body;
-};
-
-std::ostream &operator<<(std::ostream &os, const Request::Headers &headers);
-
-std::ostream &operator<<(std::ostream &os, const Request &request);
+using Request = http::BaseRequest<Method>;
 
 } // namespace rtsp
+
+template <>
+std::string http::MethodToString<rtsp::Method>(rtsp::Method method);

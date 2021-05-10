@@ -24,62 +24,39 @@ SOFTWARE.
 
 #include "request.h"
 
-#include <cctype>
-
-#include <utility>
-#include <algorithm>
-#include <sstream>
-#include <iomanip>
-
-namespace {
-
-/**
- * @brief Transform string to lower case
- *
- * @param str String to be transformed
- */
-void TransformToLowerCase(std::string &str) {
-  std::transform(str.begin(), str.end(), str.begin(), [](unsigned char c) {
-    return std::tolower(c);
-  });
-}
-
-} // namespace
-
-namespace rtsp {
-
-std::string MethodToString(Method method) {
+template <>
+std::string http::MethodToString<rtsp::Method>(rtsp::Method method) {
   std::string method_str;
 
   switch (method) {
-    case Method::kDescribe:
+    case rtsp::Method::kDescribe:
       method_str = "DESCRIBE";
       break;
-    case Method::kAnnounce:
+    case rtsp::Method::kAnnounce:
       method_str = "ANNOUNCE";
       break;
-    case Method::kGetParameter:
+    case rtsp::Method::kGetParameter:
       method_str = "GET_PARAMETER";
       break;
-    case Method::kOptions:
+    case rtsp::Method::kOptions:
       method_str = "OPTIONS";
       break;
-    case Method::kPause:
+    case rtsp::Method::kPause:
       method_str = "PAUSE";
       break;
-    case Method::kPlay:
+    case rtsp::Method::kPlay:
       method_str = "PLAY";
       break;
-    case Method::kRecord:
+    case rtsp::Method::kRecord:
       method_str = "RECORD";
       break;
-    case Method::kSetup:
+    case rtsp::Method::kSetup:
       method_str = "SETUP";
       break;
-    case Method::kSetParameter:
+    case rtsp::Method::kSetParameter:
       method_str = "SET_PARAMETER";
       break;
-    case Method::kTeardown:
+    case rtsp::Method::kTeardown:
       method_str = "TEARDOWN";
       break;
     default:
@@ -88,33 +65,3 @@ std::string MethodToString(Method method) {
 
   return method_str;
 }
-
-std::size_t HeaderNameHash::operator()(std::string header_name) const {
-  TransformToLowerCase(header_name);
-  return std::hash<std::string>()(header_name);
-}
-
-bool HeaderNameEqual::operator()(std::string lhs, std::string rhs) const {
-  TransformToLowerCase(lhs);
-  TransformToLowerCase(rhs);
-  return (lhs == rhs);
-}
-
-std::ostream &operator<<(std::ostream &os, const Request::Headers &headers) {
-  for (const auto &[key, value] : headers) {
-    os << key << ": " << value << "\r\n";
-  }
-
-  return os;
-}
-
-std::ostream &operator<<(std::ostream &os, const Request &request) {
-  os << MethodToString(request.method) << " " << request.url << " RTSP/"
-     << std::fixed << std::setprecision(1) << request.version << "\r\n"
-     << request.headers << "\r\n\r\n"
-     << request.body;
-
-  return os;
-}
-
-} // namespace rtsp
