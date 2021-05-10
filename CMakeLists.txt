@@ -25,6 +25,7 @@ set(SOURCES
     ${SRC_DIR}/converters/mjpeg_to_h264.cpp
     ${SRC_DIR}/converters/mpeg2ts_packager.cpp
     ${SRC_DIR}/http/base_request.cpp
+    ${SRC_DIR}/http/request.cpp
 )
 
 find_package(Threads REQUIRED)
