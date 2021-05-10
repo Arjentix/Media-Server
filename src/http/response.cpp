@@ -49,7 +49,8 @@ http::Response ParseResponse(std::string &&response_str) {
 
   iss >> response.version;
   iss >> response.code;
-  iss >> response.description;
+  iss.ignore(1, ' ');
+  std::getline(iss, response.description, '\r');
 
   iss.ignore(2, '\n');
   std::string line;
