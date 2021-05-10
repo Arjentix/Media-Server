@@ -26,7 +26,9 @@ set(SOURCES
     ${SRC_DIR}/converters/mpeg2ts_packager.cpp
     ${SRC_DIR}/http/base_request.cpp
     ${SRC_DIR}/http/request.cpp
+    ${SRC_DIR}/http/response.cpp
 )
+
 
 find_package(Threads REQUIRED)
 
