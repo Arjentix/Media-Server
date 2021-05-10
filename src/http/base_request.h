@@ -148,7 +148,7 @@ std::ostream &operator<<(std::ostream &os, const Headers &headers);
 
 template <typename Method, const char protocol_name[]>
 std::ostream &operator<<(std::ostream &os, const BaseRequest<Method, protocol_name> &request) {
-  os << MethodToString(request.method) << " " << request.url << " RTSP/"
+  os << MethodToString(request.method) << " " << request.url << " " << protocol_name << "/"
      << std::fixed << std::setprecision(1) << request.version << "\r\n"
      << request.headers << "\r\n\r\n"
      << request.body;
