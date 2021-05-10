@@ -56,6 +56,7 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
    */
   Servlet(int chunk_count, float chunk_duration):
   chunks_(chunk_count),
+  cached_chunks_(chunk_count),
   chunk_duration_(chunk_duration),
   chunks_mutex_() {
   }
@@ -75,18 +76,17 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
     std::lock_guard guard(chunks_mutex_);
     std::cout << "HLS: Received " << chunk.media_sequence_number
               << " chunk" << std::endl;
-    for (std::size_t i = 0; i < chunks_.size() - 1; ++i) {
-      chunks_[i] = std::move(chunks_[i + 1]);
-    }
+    AppendNewChunk(cached_chunks_, chunks_.at(0));
+    AppendNewChunk(chunks_, chunk);
 
-    chunks_.back() = chunk;
     if (chunk.media_sequence_number == chunks_.size() - 1) {
-      std::cout << "HLS: All chunks are cached" << std::endl;
+      std::cout << "HLS: Ready" << std::endl;
     }
   }
 
  private:
   std::vector<types::Mpeg2TsChunk> chunks_;
+  std::vector<types::Mpeg2TsChunk> cached_chunks_;
   const float chunk_duration_;
   mutable std::mutex chunks_mutex_;
 
@@ -110,13 +110,14 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
 
   [[nodiscard]] http::Response GetChunk(const http::Request &request) const {
     const uint64_t chunk_number = ExtractChunkNumberFromUrl(request.url);
+    const std::vector<types::Mpeg2TsChunk> *chunks_ptr = &chunks_;
+    if (chunk_number <= chunks_.back().media_sequence_number - chunks_.size()) {
+      chunks_ptr = &cached_chunks_;
+    }
 
     std::lock_guard guard(chunks_mutex_);
-    auto it = std::find_if(chunks_.begin(), chunks_.end(),
-                           [chunk_number] (const types::Mpeg2TsChunk &chunk) {
-                             return chunk.media_sequence_number == chunk_number;
-                           });
-    if (it == chunks_.end()) {
+    auto it = FindChunk(*chunks_ptr, chunk_number);
+    if (it == chunks_ptr->end()) {
       return NotFoundResponse;
     }
 
@@ -150,6 +151,23 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
     }
 
     return oss.str();
+  }
+
+  static void AppendNewChunk(std::vector<types::Mpeg2TsChunk> chunks,
+                             const types::Mpeg2TsChunk &chunk) {
+    for (std::size_t i = 0; i < chunks.size() - 1; ++i) {
+      chunks[i] = std::move(chunks[i + 1]);
+    }
+    chunks.back() = chunk;
+  }
+
+  static typename std::vector<types::Mpeg2TsChunk>::iterator
+  FindChunk(std::vector<types::Mpeg2TsChunk> chunks,
+            const uint64_t chunk_number) {
+    return std::find_if(chunks.begin(), chunks.end(),
+                        [chunk_number] (const types::Mpeg2TsChunk &chunk) {
+                          return chunk.media_sequence_number == chunk_number;
+                        });
   }
 
   [[nodiscard]] static uint64_t ExtractChunkNumberFromUrl(
