@@ -33,6 +33,7 @@ SOFTWARE.
 #include "rtsp/client.h"
 #include "converters/mjpeg_to_h264.h"
 #include "converters/mpeg2ts_packager.h"
+#include "hls/servlet.h"
 
 namespace {
 
@@ -85,22 +86,22 @@ frame::ProviderManager BuildFrameProviderManager() {
  * @param source_id Id of video source for GlobalFrameProvidersManager
  * @return Pointer to PortHandlerBase with HLS port handler inside
  */
-//std::unique_ptr<port_handler::PortHandlerBase> BuildHlsPortHandler(
-//    const FrameProviderManager &frame_provider_manager,
-//    const std::string &source_id) {
-//  const int kHlsPort = 2020;
-//  auto hls_port_handler_ptr = std::make_unique<
-//      port_handler::PortHandler<hls::Request, hls::Response>>(kHlsPort);
-//
-//  std::shared_ptr<FrameProvider> h264_provider_ptr =
-//       frame_provider_manager.GetProvider(source_id, "H.264");
-//
-//  hls_port_handler_ptr->RegisterServlet(
-//      "/h264",
-//      hls::H264Servlet(h264_provider_ptr));
-//
-//  return hls_port_handler_ptr;
-//}
+std::unique_ptr<port_handler::PortHandlerBase> BuildHlsPortHandler(
+    const frame::ProviderManager &frame_provider_manager,
+    const std::string &source_id) {
+  const int kHlsPort = 8080;
+  auto hls_port_handler_ptr = std::make_unique<
+      port_handler::PortHandler<http::Request, http::Response>>(kHlsPort);
+
+  const int kChunkCount = 3;
+  auto servlet_ptr = std::make_shared<hls::Servlet>(kChunkCount, kHlsChunkDurationSec);
+
+  frame_provider_manager.GetProvider(source_id, "MPEG2-TS")->AddObserver(servlet_ptr);
+
+  hls_port_handler_ptr->RegisterServlet("/", servlet_ptr);
+
+  return hls_port_handler_ptr;
+}
 
 /**
  * @brief Create manager and register all port handlers
@@ -108,11 +109,11 @@ frame::ProviderManager BuildFrameProviderManager() {
  * @return PortHandlerManager with all handlers registered
  */
 port_handler::PortHandlerManager BuildPortHandlerManager(
-    const frame::ProviderManager &/*frame_provider_manager*/) {
+    const frame::ProviderManager &frame_provider_manager) {
   port_handler::PortHandlerManager port_handler_manager;
 
-//  port_handler_manager.RegisterPortHandler(
-//      BuildHlsPortHandler(frame_provider_manager, "source1"));
+  port_handler_manager.RegisterPortHandler(
+      BuildHlsPortHandler(frame_provider_manager, "source1"));
 
   return port_handler_manager;
 }
