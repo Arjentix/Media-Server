@@ -75,10 +75,12 @@ class RequestDispatcher {
    */
   ResponseType Dispatch(RequestType request) const {
     try {
-      auto [path, servlet_ptr] = *ChooseServlet(request.url);
-      request.url = ExtractPath(request.url).substr(path.size());
+      std::string real_path = ExtractPath(request.url);
+      auto [registered_path, servlet_ptr] = *ChooseServlet(real_path);
+      request.url = real_path.substr(registered_path.size());
       return servlet_ptr->Handle(request);
     }
+    //! @TODO Do something with this ctr-specific constructions
     catch (const BadUrl &ex) {
       return {400, "Bad Request"};
     }
@@ -156,6 +158,10 @@ class RequestDispatcher {
 
     if (!std::regex_search(full_url, matches, reg_expr) ||
         (matches.size() < kGroupsNumber)) {
+      const std::regex path_only_reg_expr(path);
+      if (std::regex_match(full_url, path_only_reg_expr)) {
+        return full_url;
+      }
       throw BadUrl("Bad url");
     }
 
