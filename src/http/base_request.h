@@ -114,7 +114,7 @@ struct BaseRequest {
 template <typename Method, const char protocol_name[]>
 BaseRequest<Method, protocol_name> ParseRequest(const std::string &request_str) {
   using namespace std::string_literals;
-  
+
   BaseRequest<Method, protocol_name> request;
   std::istringstream iss(request_str);
 
