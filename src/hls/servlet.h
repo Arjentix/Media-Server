@@ -110,9 +110,9 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
 
   [[nodiscard]] http::Response GetChunk(const http::Request &request) const {
     const uint64_t chunk_number = ExtractChunkNumberFromUrl(request.url);
-    const std::vector<types::Mpeg2TsChunk> *chunks_ptr = &chunks_;
-    if (chunk_number <= chunks_.back().media_sequence_number - chunks_.size()) {
-      chunks_ptr = &cached_chunks_;
+    const std::vector<types::Mpeg2TsChunk> *chunks_ptr = &cached_chunks_;
+    if (chunk_number >= (chunks_.back().media_sequence_number + 1) - chunks_.size()) {
+      chunks_ptr = &chunks_;
     }
 
     std::lock_guard guard(chunks_mutex_);
@@ -140,7 +140,8 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
         "#EXT-X-VERSION:3\n"
         "#EXT-X-TARGETDURATION:"s + std::to_string(chunk_duration_) + "\n"
         "#EXT-X-MEDIA-SEQUENCE:"s +
-            std::to_string(chunks_.front().media_sequence_number) + "\n");
+            std::to_string(chunks_.front().media_sequence_number) + "\n",
+        std::ios::ate);
 
     {
       std::lock_guard guard(chunks_mutex_);
