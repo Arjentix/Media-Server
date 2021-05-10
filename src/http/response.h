@@ -36,9 +36,12 @@ struct Response {
 
   Response();
 
+  virtual ~Response() = default;
+
   Response(int code, std::string description,
            Headers headers = Headers(), std::string body = "");
 
+  std::string protocol_name;
   float version;
   int code;
   std::string description;

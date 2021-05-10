@@ -28,6 +28,17 @@ SOFTWARE.
 
 namespace rtsp {
 
-using Response = http::Response;
+struct Response : public http::Response {
+  Response():
+  http::Response(){
+    protocol_name = "RTSP";
+  }
+
+   Response(int code, std::string description,
+            http::Headers headers = Headers(), std::string body = ""):
+   http::Response(code, description, headers, body) {
+    protocol_name = "RTSP";
+  }
+};
 
 } // namespace rtsp

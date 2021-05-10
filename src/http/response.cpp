@@ -67,6 +67,7 @@ http::Response ParseResponse(std::string &&response_str) {
 namespace http {
 
 Response::Response() :
+protocol_name("HTTP"),
 version(1.0),
 code(0),
 description(),
@@ -76,6 +77,7 @@ body() {
 
 Response::Response(int code, std::string description,
                    Headers headers, std::string body) :
+protocol_name("HTTP"),
 version(1.0),
 code(code),
 description(std::move(description)),
@@ -84,10 +86,9 @@ body(std::move(body)) {
 }
 
 std::ostream &operator<<(std::ostream &os, const Response &response) {
-  os << "RTSP/" << std::fixed << std::setprecision(1) << response.version << " "
-     << response.code << " " << response.description << "\r\n"
-     << response.headers << "\r\n"
-     << response.body;
+  os << response.protocol_name << "/" << std::fixed << std::setprecision(1)
+     << response.version << " " << response.code << " " << response.description
+     << "\r\n" << response.headers << "\r\n" << response.body;
 
   return os;
 }
