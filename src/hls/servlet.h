@@ -32,6 +32,7 @@ extern "C" {
 #include <algorithm>
 #include <regex>
 #include <sstream>
+#include <mutex>
 
 #include "servlet.h"
 #include "http/request.h"
@@ -42,8 +43,8 @@ extern "C" {
 namespace hls {
 
 const char kContentLengthHeaderName[] = "Content-Length";
-const char kPlaylistPath[] = "/playlist.m3u";
-const std::regex kChunkPathRegex("^/chunk(\\d+)\\.ts$");
+const char kPlaylistPath[] = "playlist.m3u";
+const std::regex kChunkPathRegex("^chunk(\\d+)\\.ts$");
 const http::Response NotFoundResponse = {404, "Not Found"};
 
 class Servlet : public ::Servlet<http::Request, http::Response>,
@@ -55,7 +56,8 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
    */
   Servlet(int chunk_count, float chunk_duration):
   chunks_(chunk_count),
-  chunk_duration_(chunk_duration) {
+  chunk_duration_(chunk_duration),
+  chunks_mutex_() {
   }
 
   [[nodiscard]] http::Response Handle(const http::Request &request) override {
@@ -70,6 +72,9 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
    * @param data MPEG2-TS data represented in bytes
    */
   void Receive(const types::Mpeg2TsChunk &chunk) override {
+    std::lock_guard guard(chunks_mutex_);
+    std::cout << "HLS: Received " << chunk.media_sequence_number
+              << " chunk" << std::endl;
     for (std::size_t i = 0; i < chunks_.size() - 1; ++i) {
       chunks_[i] = std::move(chunks_[i + 1]);
     }
@@ -83,6 +88,7 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
  private:
   std::vector<types::Mpeg2TsChunk> chunks_;
   const float chunk_duration_;
+  mutable std::mutex chunks_mutex_;
 
   [[nodiscard]] http::Response HandleGet(const http::Request &request) const {
     http::Response response;
@@ -105,6 +111,7 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
   [[nodiscard]] http::Response GetChunk(const http::Request &request) const {
     const uint64_t chunk_number = ExtractChunkNumberFromUrl(request.url);
 
+    std::lock_guard guard(chunks_mutex_);
     auto it = std::find_if(chunks_.begin(), chunks_.end(),
                            [chunk_number] (const types::Mpeg2TsChunk &chunk) {
                              return chunk.media_sequence_number == chunk_number;
@@ -134,9 +141,12 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
         "#EXT-X-MEDIA-SEQUENCE:"s +
             std::to_string(chunks_.front().media_sequence_number) + "\n");
 
-    for (const auto &chunk : chunks_) {
-      oss << "#EXTINF:" << chunk.duration << ",\n"
-          << "/chunk" << chunk.media_sequence_number << ".ts\n";
+    {
+      std::lock_guard guard(chunks_mutex_);
+      for (const auto &chunk : chunks_) {
+        oss << "#EXTINF:" << chunk.duration << ",\n"
+            << "/chunk" << chunk.media_sequence_number << ".ts\n";
+      }
     }
 
     return oss.str();
