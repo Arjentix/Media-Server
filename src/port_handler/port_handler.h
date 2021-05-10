@@ -95,9 +95,11 @@ class PortHandler : public PortHandlerBase {
       for (;;) {
         RequestType request;
         (*client_socket_ptr) >> request;
+        std::cout << "\n" << request << "\n" << std::endl;
 
         ResponseType response = request_dispatcher_.Dispatch(request);
-        (*client_socket_ptr) << response;
+        std::cout << "\n" << response << "\n" << std::endl;
+        (*client_socket_ptr) << response << std::endl;
       }
     } catch (const sock::ReadError &) {
       std::cout << "Client on socket " << client_socket_ptr->GetDescriptor()
