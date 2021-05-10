@@ -93,7 +93,7 @@ std::string MethodToString(Method method);
  * @tparam Method Method class or enum, for which a ParseMethod<Method>() and
  * MethodToString<Method>() specializations exists (see above)
  */
-template <typename Method>
+template <typename Method, const char protocol_name[]>
 struct BaseRequest {
   virtual ~BaseRequest() = default;
 
@@ -111,9 +111,11 @@ struct BaseRequest {
  * @param request_str String with request
  * @return Extracted request
  */
-template <typename Method>
-BaseRequest<Method> ParseRequest(const std::string &request_str) {
-  BaseRequest<Method> request;
+template <typename Method, const char protocol_name[]>
+BaseRequest<Method, protocol_name> ParseRequest(const std::string &request_str) {
+  using namespace std::string_literals;
+  
+  BaseRequest<Method, protocol_name> request;
   std::istringstream iss(request_str);
 
   std::string method_str;
@@ -125,8 +127,8 @@ BaseRequest<Method> ParseRequest(const std::string &request_str) {
   iss.ignore(1);
   std::string protocol;
   std::getline(iss, protocol, '/');
-  if (protocol != "RTSP") {
-    throw ParseError("Expected RTSP protocol, but got " + protocol);
+  if (protocol != protocol_name) {
+    throw ParseError("Expected "s + protocol_name + " protocol, but got " + protocol);
   }
 
   iss >> request.version;
@@ -144,8 +146,8 @@ BaseRequest<Method> ParseRequest(const std::string &request_str) {
 
 std::ostream &operator<<(std::ostream &os, const Headers &headers);
 
-template <typename Method>
-std::ostream &operator<<(std::ostream &os, const BaseRequest<Method> &request) {
+template <typename Method, const char protocol_name[]>
+std::ostream &operator<<(std::ostream &os, const BaseRequest<Method, protocol_name> &request) {
   os << MethodToString(request.method) << " " << request.url << " RTSP/"
      << std::fixed << std::setprecision(1) << request.version << "\r\n"
      << request.headers << "\r\n\r\n"
@@ -164,15 +166,16 @@ std::ostream &operator<<(std::ostream &os, const BaseRequest<Method> &request) {
  */
 int ExtractContentLength(const Headers &headers);
 
-template <typename Method>
-sock::Socket &operator>>(sock::Socket &socket, BaseRequest<Method> &request) {
+template <typename Method, const char protocol_name[]>
+sock::Socket &operator>>(sock::Socket &socket,
+                         BaseRequest<Method, protocol_name> &request) {
   std::string request_str;
   while (request_str.rfind("\r\n\r\n") == std::string::npos) {
     constexpr int kBuffSize = 1024;
     request_str += socket.Read(kBuffSize);
   }
 
-  request = ParseRequest<Method>(request_str);
+  request = ParseRequest<Method, protocol_name>(request_str);
 
   const int content_length = ExtractContentLength(request.headers);
   const int diff = content_length - request.body.size();

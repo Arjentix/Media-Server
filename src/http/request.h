@@ -46,6 +46,7 @@ Method ParseMethod<Method>(const std::string &method_str);
 template <>
 std::string MethodToString<Method>(Method method);
 
-using Request = BaseRequest<Method>;
+inline const char kProtocolName[] = "HTTP";
+using Request = BaseRequest<Method, kProtocolName>;
 
 } // namespace http

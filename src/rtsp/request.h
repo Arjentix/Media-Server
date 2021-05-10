@@ -44,7 +44,8 @@ enum class Method {
   kTeardown
 };
 
-using Request = http::BaseRequest<Method>;
+inline const char kProtocolName[] = "RTSP";
+using Request = http::BaseRequest<Method, kProtocolName>;
 
 } // namespace rtsp
 
