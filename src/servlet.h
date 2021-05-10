@@ -41,5 +41,5 @@ class Servlet {
    * @param request Client requests
    * @return Response
    */
-  virtual ResponseType Handle(const RequestType &request) = 0;
+  [[nodiscard]] virtual ResponseType Handle(const RequestType &request) = 0;
 };
