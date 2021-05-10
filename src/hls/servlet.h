@@ -153,7 +153,7 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
     return oss.str();
   }
 
-  static void AppendNewChunk(std::vector<types::Mpeg2TsChunk> chunks,
+  static void AppendNewChunk(std::vector<types::Mpeg2TsChunk> &chunks,
                              const types::Mpeg2TsChunk &chunk) {
     for (std::size_t i = 0; i < chunks.size() - 1; ++i) {
       chunks[i] = std::move(chunks[i + 1]);
@@ -161,8 +161,8 @@ class Servlet : public ::Servlet<http::Request, http::Response>,
     chunks.back() = chunk;
   }
 
-  static typename std::vector<types::Mpeg2TsChunk>::iterator
-  FindChunk(std::vector<types::Mpeg2TsChunk> chunks,
+  static typename std::vector<types::Mpeg2TsChunk>::const_iterator
+  FindChunk(const std::vector<types::Mpeg2TsChunk> &chunks,
             const uint64_t chunk_number) {
     return std::find_if(chunks.begin(), chunks.end(),
                         [chunk_number] (const types::Mpeg2TsChunk &chunk) {
