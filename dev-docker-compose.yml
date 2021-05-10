@@ -6,4 +6,5 @@ services:
         dockerfile: ./dev.Dockerfile
       ports:
         - "2222:22"
+        - "8080:8080"
         - "4577:4577/udp"
