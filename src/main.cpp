@@ -106,6 +106,7 @@ class MediaServer {
 int main() {
   try {
     signal(SIGINT, SignalHandler);
+    signal(SIGTERM, SignalHandler);
 
     MediaServer media_server;
     media_server.Start();
