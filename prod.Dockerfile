@@ -4,7 +4,11 @@ FROM ubuntu:20.04 AS build
 RUN apt-get update && \
     apt-get install -y \
 		g++ \
-		cmake
+		cmake \
+        libavcodec-dev \
+        libavformat-dev \
+        libswscale-dev \
+        libavutil-dev
 
 # Setting up user
 RUN useradd -m user && yes password | passwd user
@@ -24,8 +28,17 @@ RUN cmake -DCMAKE_BUILD_TYPE=Release .. && \
 # Running ---------------
 FROM ubuntu:20.04 AS run
 
-EXPOSE 2020
+EXPOSE 8080
+EXPOSE 4577/udp
+
+# Downloading dependencies
+RUN apt-get update && \
+    apt-get install -y \
+        libavcodec58 \
+        libavformat58 \
+        libswscale5 \
+        libavutil56
 
 WORKDIR /app
-COPY --from=build /app/bin/media-server .
+COPY --from=build /app/bin/Release/media-server .
 ENTRYPOINT [ "./media-server" ]
