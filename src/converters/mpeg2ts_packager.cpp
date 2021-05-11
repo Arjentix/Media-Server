@@ -24,6 +24,7 @@ SOFTWARE.
 
 #include "mpeg2ts_packager.h"
 
+#include <stdexcept>
 //#include <iostream>
 //#include <fstream>
 
