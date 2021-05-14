@@ -24,6 +24,9 @@ SOFTWARE.
 
 #include "client.h"
 
+#include <netdb.h>
+#include <arpa/inet.h>
+
 #include <algorithm>
 #include <iostream>
 
@@ -33,19 +36,83 @@ SOFTWARE.
 #include "rtp/packet.h"
 #include "rtp/mjpeg/packet.h"
 
+namespace {
+
+/**
+ * @brief Retrieve hostname and port from url
+ * @throw std::invalid_argument, if provided bad url
+ *
+ * @param url Url to get hostname and ip from
+ * @param default_port Default port, if it isn't specified in url
+ * @return Pair of hostname and port
+ */
+std::pair<std::string, int> GetHostnameAndPort(const std::string &url,
+                                               const int default_port) {
+  std::string::size_type hostname_start = url.find("://");
+  if ((hostname_start == std::string::npos) ||
+      (hostname_start >= url.size() - 3)) {
+    throw std::invalid_argument("Invalid url");
+  }
+  hostname_start += 3;
+
+  std::string hostname = url.substr(hostname_start,
+                                    url.find('/', hostname_start) - hostname_start);
+  std::string::size_type port_start = hostname.find(':');
+  int port = default_port;
+  if (port_start != std::string::npos) {
+    port = std::stoi(hostname.substr(port_start + 1));
+    hostname = hostname.substr(0, port_start);
+  }
+
+  return {hostname, port};
+}
+
+/**
+ * @brief Get ip from hostname
+ * @throw std::invalid_argument, if provided bad hostname
+ * @throw std::runtime_error, if can't get ip from hostname
+ *
+ * @param hostname Name of the host to get ip from
+ * @return Ip of host
+ */
+std::string GetIp(const std::string &hostname) {
+  hostent *host_ptr = gethostbyname(hostname.c_str());
+  if (host_ptr == nullptr) {
+    throw std::invalid_argument("Invalid hostname");
+  }
+
+  auto addr_list = reinterpret_cast<in_addr **>(host_ptr->h_addr_list);
+  for (int i = 0; i < host_ptr->h_length; ++i) {
+    in_addr *addr = addr_list[i];
+    if (addr != nullptr) {
+      return inet_ntoa(*addr_list[i]);
+    }
+  }
+
+  throw std::runtime_error("Can't get host ip");
+}
+
+} // namespace
+
 namespace rtsp {
 
 using namespace std::string_literals;
 
-Client::Client(const std::string &server_ip, const int port, std::string url):
+Client::Client(std::string url):
 url_(std::move(url)),
 rtsp_socket_(sock::Type::kTcp),
 rtp_socket_(sock::Type::kUdp, 4577),
 session_description_(),
+width_(0),
+height_(0),
+fps_(0),
 session_id_(0),
 rtp_data_receiving_worker_(),
 worker_stop_(false),
 worker_mutex_() {
+  auto [hostname, port] = GetHostnameAndPort(url_, 554);
+  std::string server_ip = GetIp(hostname);
+  std::cout << "Connecting to " << server_ip << ":" << port << std::endl;
   if (!rtsp_socket_.Connect(server_ip, port)) {
     throw std::runtime_error("Can't connect to the RTSP server "s +
                              server_ip + ':' + std::to_string(port));
@@ -111,6 +178,10 @@ void Client::HandleDescribeResponse(const Response &response) {
   if (video_description_it == session_description_.media_descriptions.end()) {
     throw std::runtime_error(
         "There is no required \"video\" media description in server's SDP");
+  }
+  auto last_char_it = std::prev(url_.end());
+  if (*(last_char_it) == '/') {
+    url_.erase(last_char_it);
   }
   url_ += ExtractVideoPath(*video_description_it);
   std::tie(width_, height_) = ExtractDimensions(*video_description_it);

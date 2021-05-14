@@ -44,8 +44,8 @@ void SignalHandler(int) {
 
 class MediaServer {
  public:
-  MediaServer():
-  rtsp_client_(kRtspSourceIp, kRtspSourcePort, kRtspSourceUrl),
+  explicit MediaServer(const std::string &rtsp_stream_url):
+  rtsp_client_(rtsp_stream_url),
   mjpeg_to_h264_ptr_(),
   mpeg2ts_packager_ptr_(),
   port_handler_manager_() {
@@ -53,8 +53,10 @@ class MediaServer {
     const int height = rtsp_client_.GetHeight();
     const int fps = rtsp_client_.GetFps();
 
-    mjpeg_to_h264_ptr_ = std::make_shared<converters::MjpegToH264>(width, height, fps);
-    mpeg2ts_packager_ptr_ = std::make_shared<converters::Mpeg2TsPackager>(width, height, fps, kHlsChunkDurationSec);
+    mjpeg_to_h264_ptr_ = std::make_shared<converters::MjpegToH264>
+        (width, height, fps);
+    mpeg2ts_packager_ptr_ = std::make_shared<converters::Mpeg2TsPackager>
+        (width, height, fps, kHlsChunkDurationSec);
     rtsp_client_.AddObserver(mjpeg_to_h264_ptr_);
     mjpeg_to_h264_ptr_->AddObserver(mpeg2ts_packager_ptr_);
 
@@ -71,9 +73,6 @@ class MediaServer {
   }
 
  private:
-  static constexpr char kRtspSourceIp[] = "192.168.0.16";
-  static constexpr int kRtspSourcePort = 5544;
-  static constexpr char kRtspSourceUrl[] = "rtsp://192.168.0.16:5544/jpeg";
   static constexpr int kHlsPort = 8080;
   static constexpr int kHlsChunkCount = 3;
   static constexpr float kHlsChunkDurationSec = 8.0;
@@ -103,12 +102,17 @@ class MediaServer {
 
 } // namespace
 
-int main() {
+int main(int argc, char **argv) {
   try {
     signal(SIGINT, SignalHandler);
     signal(SIGTERM, SignalHandler);
 
-    MediaServer media_server;
+    if (argc < 2) {
+      std::cerr << "Usage: " << argv[0] << " <rtsp-stream-url>" << std::endl;
+      return EXIT_FAILURE;
+    }
+
+    MediaServer media_server(argv[1]);
     media_server.Start();
   } catch (const std::exception &ex) {
     std::cerr << "Error: " << ex.what() << std::endl;

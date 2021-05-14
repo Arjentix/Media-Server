@@ -25,7 +25,6 @@ SOFTWARE.
 #pragma once
 
 #include <string>
-#include <random>
 #include <thread>
 #include <mutex>
 
@@ -47,11 +46,9 @@ namespace rtsp {
   /**
    * @details Blocks until connection is established
    *
-   * @param server_ip RTSP server's ip address
-   * @param port RTSP server's port
-   * @param url Url to send request on
+   * @param url RTSP stream url
    */
-  Client(const std::string &server_ip, int port, std::string url);
+  explicit Client(std::string url);
 
   /**
    * @brief Sends TEARDOWN request
@@ -80,7 +77,7 @@ namespace rtsp {
   int GetFps() const;
 
  private:
-  std::string url_; //!< RTSP content url
+  std::string url_; //!< RTSP stream url
   sock::ClientSocket rtsp_socket_; //!< Socket for RTSP TCP connection
   sock::ServerSocket rtp_socket_; //!< Socket for RTP UDP data receiving
   //! Session description

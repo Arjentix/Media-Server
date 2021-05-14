@@ -83,7 +83,7 @@ cmake --build . -j 8
 Run:
 
 ```bash
-bin/Release/media-server
+bin/Release/media-server <rtsp-stream-url>
 ```
 
 ## Test

@@ -41,4 +41,4 @@ RUN apt-get update && \
 
 WORKDIR /app
 COPY --from=build /app/bin/Release/media-server .
-ENTRYPOINT [ "./media-server" ]
+ENTRYPOINT [ "./media-server", "rtsp://192.168.0.16:5544/jpeg/"]
