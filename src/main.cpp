@@ -68,7 +68,11 @@ class MediaServer {
 
     const int kAcceptTimeoutInMilliseconds = 2000;
     while (!stop_flag) {
-      port_handler_manager_.TryAcceptClients(kAcceptTimeoutInMilliseconds);
+      try {
+        port_handler_manager_.TryAcceptClients(kAcceptTimeoutInMilliseconds);
+      } catch (std::runtime_error &ex) {
+        std::cout << "Warning: " << ex.what() << std::endl;
+      }
     }
   }
 
