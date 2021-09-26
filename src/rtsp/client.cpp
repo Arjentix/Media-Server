@@ -276,7 +276,11 @@ void Client::RtpDataReceiving() {
     mjpeg_packets.push_back(std::move(mjpeg_packet));
     if (rtp_packet.header.marker == 1U) {
       types::Bytes frame = rtp::mjpeg::UnpackJpeg(mjpeg_packets);
-      ProvideToAll(types::MjpegFrame(frame));
+      try {
+        ProvideToAll(types::MjpegFrame(frame));
+      } catch (std::runtime_error &ex) {
+        std::cout << "Warning: " << ex.what() << std::endl;
+      }
       mjpeg_packets.clear();
     }
   }
